@@ -22,15 +22,15 @@ class Location:
         return len(self._actors)
 
 
-    def addActorToLocation(self, actor):
-        self._log.debug("Adding actor {0} to location {1}".format(
-            actor.getName(), self.getName()) )
+    def addActorToLocation(self, actor, arrivalTime):
+        self._log.debug("Adding actor {0} to location {1} at {2}".format(
+            actor.getName(), self.getName(), arrivalTime) )
 
         if actor.getName() in self._actors:
             raise ValueError("Actor {0} already in location {1}!".format(
                 actor.getName(), self.getName()) )
 
-        self._actors[actor.getName()] = actor
+        self._actors[actor.getName()] = (actor, arrivalTime)
         
-        self._log.info("Successfully added actor {0} to location {1}".format(
-            actor.getName(), self.getName()) )
+        self._log.info("Recorded actor \"{0}\" arriving location \"{1}\" at {2}".format(
+            actor.getName(), self.getName(), arrivalTime) )

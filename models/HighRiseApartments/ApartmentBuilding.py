@@ -33,7 +33,8 @@ class ApartmentBuilding(Building):
             self.getName(), currDate.isoformat()) )
         resident = BuildingResident("819", 1, currDate)
 
-        buildingLocations[resident.getLocation()].addActorToLocation(resident)
+        buildingLocations[resident.getLocation()].addActorToLocation(
+            resident, datetime.datetime(currDate.year, currDate.month, currDate.day))
         actorList = { resident.getName(): resident }
         return actorList
 

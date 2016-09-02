@@ -15,7 +15,8 @@ class Actor:
         self._completedActivities = {} 
         self._pendingActivities = self._createActivities()
 
-        self._log.info("Instantiated actor " + self.getName() )
+        self._log.info("Instantiated actor {0} on {1}".format( 
+            self.getName(), currDate) )
 
 
     def getName(self):

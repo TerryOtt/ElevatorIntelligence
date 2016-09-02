@@ -17,9 +17,6 @@ class BuildingResident(Actor):
         Actor.__init__(self, "RES {0}-{1}".format(
             apartmentNumber, apartmentResidentID), currDate )
 
-        self._log.debug("Home floor for {0}: {1}".format(
-            self.getName(), self._homeFloor) )
-
 
     def _createActivities(self):
         self._log.debug("Creating activities for {0} on date {1}".format(
