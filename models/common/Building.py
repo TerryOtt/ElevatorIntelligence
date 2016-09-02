@@ -21,7 +21,7 @@ class Building:
         return self._buildingLocation
 
 
-    def runModel(self, startDate, endDate):
+    def runModel(self, startDate, endDate, knownLocations):
         if endDate < startDate:
             raise ValueError('End date cannot be before start date')
 
@@ -31,20 +31,24 @@ class Building:
 
 
     def _simulateDailyActivities(self, currDate):
-        floors = _getBuildingFloors(self)
+        locations = _getBuildingLocations(self)
         elevatorModel = _getElevatorModel(self)
-        actorList = _getActorsForDay(self, currDate)
 
-        # Add each actor to their starting position
-        for currActor in actorList:
-            
-        
-            
+        # Each actor will add him or herself to the location model upon instantiation
+        actorList = _createActorsForDay(self, currDate, locations)
+
+
+    @abc.abstractmethod
+    def _getBuildingLocations(self):
+        return
+
+
     @abc.abstractmethod
     def _getElevatorModel(self):
         return
 
 
     @abc.abstractmethod
-    def _createActorsForDay(self):
+    def _createActorsForDay(self, currDate, buildingLocations):
         return
+
