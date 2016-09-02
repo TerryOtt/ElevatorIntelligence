@@ -29,3 +29,8 @@ class ScheduledActivity():
     @abc.abstractmethod
     def getType(self):
         return
+    
+
+    @abc.abstractmethod
+    def getDescription(self):
+        return

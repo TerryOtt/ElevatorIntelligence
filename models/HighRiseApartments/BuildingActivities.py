@@ -17,6 +17,10 @@ class ParkCar(ScheduledActivity):
         return "Park Car"
 
 
+    def getDescription(self):
+        return "Park car on " + self.getParkingFloor()
+
+
     def getParkingFloor(self):
         return self._parkingFloor
 

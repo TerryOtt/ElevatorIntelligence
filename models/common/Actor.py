@@ -82,8 +82,8 @@ class Actor:
 
         self._pendingActivities[newActivity.getStartTime()] = newActivity
 
-        self._log.debug("{1} added activity {2} that goes from {0} until {3}, duration = {4}".format(
-            newActivity.getStartTime(), self.getName(), newActivity.getType(), newActivity.getEndTime(),
+        self._log.debug("\"{1}\" added activity \"{2}\", starting @ {0} until {3}, duration = {4}".format(
+            newActivity.getStartTime(), self.getName(), newActivity.getDescription(), newActivity.getEndTime(),
             newActivity.getDuration()) )
 
 
