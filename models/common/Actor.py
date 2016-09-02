@@ -3,6 +3,7 @@
 import abc
 import logging
 import datetime
+import pprint
 
 
 class Actor:
@@ -85,6 +86,9 @@ class Actor:
         self._log.debug("\"{1}\" added activity \"{2}\", starting @ {0} until {3}, duration = {4}".format(
             newActivity.getStartTime(), self.getName(), newActivity.getDescription(), newActivity.getEndTime(),
             newActivity.getDuration()) )
+
+
+        self._log.debug(pprint.pformat(self._pendingActivities))
 
 
     @abc.abstractmethod

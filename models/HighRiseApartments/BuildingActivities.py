@@ -3,12 +3,12 @@
 import logging
 from common.ScheduledActivity import ScheduledActivity
 import random
+import datetime
 
 
 class ParkCar(ScheduledActivity):
 
     def __init__(self, carParkTime):
-        self._log = logging.getLogger(__name__)
         ScheduledActivity.__init__(self, carParkTime, carParkTime)
         self._parkingFloor = ParkCar._getRandomParkingFloor()
 
@@ -41,3 +41,37 @@ class ParkCar(ScheduledActivity):
         else:
             return "Floor 2"
 
+
+class RequestElevator(ScheduledActivity):
+
+    def __init__(self, buttonPressTime, startFloorIndex, destinationFloorIndex):
+        ScheduledActivity.__init__(self, buttonPressTime, buttonPressTime)
+        self._startFloorIndex = startFloorIndex
+        self._destinationFloorIndex = destinationFloorIndex
+        
+        floorDelta = destinationFloorIndex - startFloorIndex
+        if floorDelta > 0:
+            self._buttonPressed = "UP"
+        else:
+            self._buttonPressed = "DOWN"
+
+
+    def getType(self):
+        return "Request Elevator"
+
+
+    def getDescription(self):
+        return "requested elevator on floor {0} by pressing {1} button, going to floor {2}".format(
+            self._startFloorIndex, self._buttonPressed, self._destinationFloorIndex)
+        
+
+    def getStartFloor(self):
+        return self._startFloor
+
+
+    def getDestinationFloor(self):
+        return self._destinationFloor
+
+
+    def getButtonPressed(self):
+        return self._buttonPressed
