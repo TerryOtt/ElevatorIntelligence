@@ -7,14 +7,27 @@ class Actor:
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, actorName, startingLocation):
+    def __init__(self, actorName, currDate):
         self._log = logging.getLogger(__name__)
         self._actorName = actorName
-        self._currLocation = startingLocation
+        self._currDate = currDate
+        self._currLocation = None
+        self._completedActivities = {} 
+        self._pendingActivities = self._createActivities()
+
+        self._log.info("Instantiated actor " + self.getName() )
 
 
     def getName(self):
         return self._actorName
+
+
+    def getDate(self):
+        return self._currDate
+
+
+    def setLocation(self, location):
+        self._currLocation = location
 
 
     def getLocation(self):
@@ -22,5 +35,10 @@ class Actor:
 
 
     @abc.abstractmethod
-    def startDailyActivities(self, todaysDate):
+    def _createActivities(self, currDate):
+        return
+
+
+    @abc.abstractmethod
+    def startDailyActivities(self):
         return

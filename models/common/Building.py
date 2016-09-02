@@ -4,6 +4,7 @@ import abc
 import logging
 import pprint
 import datetime
+import random
 
 
 class Building:
@@ -14,6 +15,9 @@ class Building:
         self._log = logging.getLogger(__name__)
         self._buildingName = buildingName
         self._buildingLocation = buildingLocation
+
+        # Seed PRNG (exactly once)
+        random.seed()
 
 
     def getName(self):
@@ -36,6 +40,8 @@ class Building:
 
 
     def _simulateDailyActivities(self, currDate):
+        self._log.info("Starting daily activities for {0} on {1}".format(
+            self.getName(), currDate.isoformat()) )
         locations = self._getBuildingLocations()
         elevatorModel = self._getElevatorModel()
 
