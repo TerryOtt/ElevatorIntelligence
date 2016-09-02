@@ -6,8 +6,11 @@ from HighRiseApartments.BuildingResident    import BuildingResident
 from common.Location                        import Location
 import datetime
 import pprint
+import random
+
 
 class ApartmentBuilding(Building):
+
 
     def __init__(self, buildingName, buildingLocation):
         self._log = logging.getLogger(__name__)
@@ -37,6 +40,7 @@ class ApartmentBuilding(Building):
             resident, datetime.datetime(currDate.year, currDate.month, currDate.day))
         actorList = { resident.getName(): resident }
         return actorList
+
 
 
 if __name__ == '__main__':
