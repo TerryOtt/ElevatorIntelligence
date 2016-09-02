@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import abc
 import logging
@@ -9,17 +9,8 @@ class Actor:
 
     def __init__(self, actorID):
         self._log = logging.getLogger(__name__)
-        self._date = None
         self._actorID = None
         self._setActorID(actorID)
-
-
-    def _setDate(self, todaysDate):
-        self._today = todaysDate
-
-
-    def _getDate(self):
-        return self._today
 
 
     def _setActorID(self, actorId):
@@ -31,5 +22,5 @@ class Actor:
 
 
     @abc.abstractmethod
-    def startDailyActivities(self):
+    def startDailyActivities(self, todaysDate):
         return
