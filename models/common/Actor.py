@@ -7,19 +7,14 @@ class Actor:
 
     __metaclass__ = abc.ABCMeta
 
-    def __init__(self, actorID, startingLocation):
+    def __init__(self, actorName, startingLocation):
         self._log = logging.getLogger(__name__)
-        self._actorID = None
-        self._setActorID(actorID)
-        self._currLocation(startingLocation)
+        self._actorName = actorName
+        self._currLocation = startingLocation
 
 
-    def _setActorID(self, actorId):
-        self._actorID = actorId
-
-
-    def getActorID(self):
-        return self._actorID
+    def getName(self):
+        return self._actorName
 
 
     def getLocation(self):

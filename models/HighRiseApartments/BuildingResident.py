@@ -1,19 +1,19 @@
 #!/usr/bin/python
 
-from Actor import Actor
+from common.Actor import Actor
 import logging
 import datetime
 
 class BuildingResident(Actor):
 
-    def __init__(self, buildingResidentID):
-        Actor.__init__(self, "RES " + buildingResidentID)
+    def __init__(self, buildingResidentID, startingLocation):
+        Actor.__init__(self, "RES " + buildingResidentID, startingLocation)
 
-        self._log.info("Instantiated actor " + self.getActorID())
+        self._log.info("Instantiated actor " + self.getName())
 
     def startDailyActivities(self, todaysDate):
         self._setDate(todaysDate)
-        self._log.info("Starting daily activities for " + self.getActorID() +
+        self._log.info("Starting daily activities for " + self.getName() +
            " on " + self._getDate().strftime("%A, %Y-%m-%d"))
 
 

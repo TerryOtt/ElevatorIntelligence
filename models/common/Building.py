@@ -2,6 +2,9 @@
 
 import abc
 import logging
+import pprint
+import datetime
+
 
 class Building:
 
@@ -21,21 +24,23 @@ class Building:
         return self._buildingLocation
 
 
-    def runModel(self, startDate, endDate, knownLocations):
+    def runModel(self, startDate, endDate):
         if endDate < startDate:
             raise ValueError('End date cannot be before start date')
 
-        for currDate in range(startDate, endDate):
+        currDate = startDate
+        while currDate <= endDate:
             # NOTE: each days' simulation is independent. Should be its own thread
-            _simulateDailyActivities(self, currDate)
+            self._simulateDailyActivities(currDate)
+            currDate += datetime.timedelta(days=1)
 
 
     def _simulateDailyActivities(self, currDate):
-        locations = _getBuildingLocations(self)
-        elevatorModel = _getElevatorModel(self)
+        locations = self._getBuildingLocations()
+        elevatorModel = self._getElevatorModel()
 
         # Each actor will add him or herself to the location model upon instantiation
-        actorList = _createActorsForDay(self, currDate, locations)
+        actorList = self._createActorsForDay(currDate, locations)
 
 
     @abc.abstractmethod
