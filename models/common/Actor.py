@@ -78,8 +78,9 @@ class Actor:
     def _addPendingActivity(self, newActivity):
         # Make sure we're not overwriting something at the same time
         if newActivity.getStartTime() <= self._getEarliestStartTime():
-            raise ValueError("Can't add event {0} for {1} at {2}; scheduling conflict!".format(
-                newActivity.getType(), self.getName(), self.getDate()) )
+            raise ValueError("Can't add event {0} for {1} at {2}; scheduling conflict, earliest start is {3}!".format(
+                newActivity.getType(), self.getName(), newActivity.getStartTime(),
+                self._getEarliestStartTime()) )
 
         self._pendingActivities[newActivity.getStartTime()] = newActivity
 
