@@ -18,18 +18,28 @@ class BuildingResident(Actor):
         self._homeFloor = "Floor {0}".format(
             self._apartmentNumber[0] )
         self._parkingFloor = None
-        self._checkedMailToday = False
-        self._retrievedPackagesToday = False
 
-        self._simulationProbabilities = {
-            # Odds that they'll check mail on way in after parking
-            'checkMailAfterParking':    0.25,
+        # These are things that residents do at MOST once per day
+        self._dailyActivities = {
+            'checkMail': { 
+                'completed':    False, 
+                'probability':  0.25
+            },
 
-            # Will they do any shopping on way home?
-            'shoppingOnWayHome':        0.25,
+            'retrievePackages': {
+                'completed':    False,
+                'probability':  0.05
+            },
 
-            # Do they have a package they need to pick up from the office?
-            'retrivePackages':          0.05,
+            'workOut': {
+                'completed':    False,
+                'probability':  0.40
+            },
+
+            'goShopping': {
+                'completed':    False,
+                'probability':  0.10
+            },
         }
 
         self._floorIndex = { 
@@ -109,7 +119,15 @@ class BuildingResident(Actor):
             self._driveHomeGoToApartment(returnTime)
         # We started out at home
         else:
-            # self._parkCar()
+            # Initialize car to a sane floor
+            self._parkingFloor = HighRiseApartments.BuildingActivities.ParkCar.getRandomParkingFloor()
+
+            self._log.debug("Starting out at home, car has been warped to {0}".format(
+                self._parkingFloor) )
+
+            # Should we go to the gym before work?
+            
+ 
             pass
             
         
@@ -131,7 +149,6 @@ class BuildingResident(Actor):
         self._addPendingActivity(parkActivity)
 
 
-
     def _goFromCarToApt(self, willingToCheckMail=True, willingToTakeStairs=True):
         
         # Things we know
@@ -151,36 +168,38 @@ class BuildingResident(Actor):
             elif self._wantToRetrievePackages() is True:
                 self._log.debug("{0} wants to retrive packages after parking before going to the apt".format(
                     self.getName()) )
-                self._getPackages(currFloorIndex, willingToTakeStairs)
+                self._retrievePackages(currFloorIndex, willingToTakeStairs)
                 currFloorIndex = self._servicesFloorIndex[ "Leasing Office" ]
 
         self._goToApartment(currFloorIndex, willingToTakeStairs)
 
 
     def _wantToCheckMail(self):
-        # If we've checked mail today, definitely not
-        if self._haveCheckedMailToday() is True:
-            return False
-
-        # If we haven't today, there's still a pretty low chance we want to
-        return random.random() <= self._simulationProbabilities['checkMailAfterParking']
+        return self._testDailyActivity('checkMail')
 
 
     def _wantToRetrievePackages(self):
-        # If we've gotten packages today, definitely not
-        if self._haveRetrievedPackagesToday() is True:
+        return self._testDailyActivity('retrievePackages')
+
+
+    def _wantToWorkOut(self):
+        return self._testDailyActivity('workOut')
+     
+
+    def _testDailyActivity(self, dailyActivity):
+        # If we've done the task today already, definitely not
+        if self._dailyActivities[dailyActivity]['completed'] is True:
             return False
 
-        # If we haven't today, there's still a pretty low chance we have any or want to
-        return random.random() <= self._simulationProbabilities['retrivePackages']
+        # See if we do the activity now
+        elif random.random() <= self._dailyActivities[dailyActivity]['probability']:
+            # Mark it complete
+            self._dailyActivities[dailyActivity]['completed'] = True
+            return True
 
+        else:
+            return False
 
-    def _haveRetrievedPackagesToday(self):
-        return self._retrievedPackagesToday
-            
-
-    def _haveCheckedMailToday(self):
-        return self._checkedMailToday
 
 
     def _checkMail(self, startingFloorIndex, willingToTakeStairs):
@@ -194,17 +213,15 @@ class BuildingResident(Actor):
 
         # Show we've checked mail and add some time
         self._earliestStartTime += datetime.timedelta(minutes=random.randint(1, 10))
-        self._checkedMailToday = True
 
 
-    def _getPackages(self, startingFloorIndex, willingToTakeStairs):
+    def _retrievePackages(self, startingFloorIndex, willingToTakeStairs):
         self._goToLeasingOffice(startingFloorIndex, willingToTakeStairs)
 
-        # Show we've retrieved packages and add some time
+        # Add time to check packages
         self._earliestStartTime += datetime.timedelta(
             minutes=random.randint(1, 5),
             seconds=random.randint(0,59))
-        self._retrievedPackagesToday = True
 
 
     def _goToLeasingOffice(self, startingFloorIndex, willingToTakeStairs):
@@ -273,7 +290,7 @@ class BuildingResident(Actor):
             self.getName(), returnTime) )
 
         # Do we do any shopping on way home?
-        if random.random() <= self._simulationProbabilities['shoppingOnWayHome']:
+        if self._testDailyActivity('goShopping'):
             unloadingTrips = random.randint(1,4)
             self._log.debug("Resident {0} went shopping on way home, needs {1} ".format(
                 self.getName(), unloadingTrips) + " trips from car to unload")

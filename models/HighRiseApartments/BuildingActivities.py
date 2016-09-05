@@ -10,7 +10,7 @@ class ParkCar(ScheduledActivity):
 
     def __init__(self, carParkTime):
         ScheduledActivity.__init__(self, carParkTime, carParkTime)
-        self._parkingFloor = ParkCar._getRandomParkingFloor()
+        self._parkingFloor = ParkCar.getRandomParkingFloor()
 
 
     def getType(self):
@@ -26,7 +26,7 @@ class ParkCar(ScheduledActivity):
 
 
     @staticmethod
-    def _getRandomParkingFloor():
+    def getRandomParkingFloor():
         # In this building, floors 2 and 1 are more heavily used than floor G
         #
         # 30% park on floor 2
