@@ -30,7 +30,7 @@ class Actor:
 
         self._createActivities()
 
-        self._log.info("Instantiated actor {0} on {1}".format( 
+        self._log.debug("Instantiated actor {0} on {1}".format( 
             self.getName(), currDate) )
 
 
@@ -88,7 +88,7 @@ class Actor:
         self._earliestStartTime = newActivity.getEndTime() + \
             datetime.timedelta(seconds=1)
 
-        self._log.debug("\"{1}\" added activity \"{2}\", starting @ {0} until {3}, duration = {4}".format(
+        self._log.info("\"{1}\" added activity \"{2}\", starting @ {0} until {3}, duration = {4}".format(
             newActivity.getStartTime(), self.getName(), newActivity.getDescription(), newActivity.getEndTime(),
             newActivity.getDuration()) )
 

@@ -44,7 +44,7 @@ class ApartmentBuilding(Building):
 
 
 if __name__ == '__main__':
-    logging.basicConfig(level=logging.DEBUG)
+    logging.basicConfig(level=logging.INFO)
     building = ApartmentBuilding("High Rise Apts", "Anywhere, USA")
     building.runModel( datetime.date(2016, 12, 15), datetime.date(2016, 12, 15) )
         
