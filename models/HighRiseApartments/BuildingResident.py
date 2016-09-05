@@ -19,10 +19,17 @@ class BuildingResident(Actor):
             self._apartmentNumber[0] )
         self._parkingFloor = None
         self._checkedMailToday = False
+        self._retrievedPackagesToday = False
 
         self._simulationProbabilities = {
+            # Odds that they'll check mail on way in after parking
             'checkMailAfterParking':    0.25,
+
+            # Will they do any shopping on way home?
             'shoppingOnWayHome':        0.25,
+
+            # Do they have a package they need to pick up from the office?
+            'retrivePackages':          0.05,
         }
 
         self._floorIndex = { 
@@ -41,7 +48,6 @@ class BuildingResident(Actor):
             "Leasing Office": 5,
             "Mail": 4
         }
-        
 
         Actor.__init__(self, "RES {0}-{1}".format(
             apartmentNumber, apartmentResidentID), currDate )
@@ -136,11 +142,17 @@ class BuildingResident(Actor):
         # See if we want to check mail first?
         currFloorIndex = self._floorIndex[ self._getParkingFloor() ]
 
-        if willingToCheckMail is True and self._wantToCheckMail() is True:
-            self._log.debug("{0} wants to check mail after parking before going to the apt".format(
-                self.getName()) )
-            self._checkMail(currFloorIndex, willingToTakeStairs)
-            currFloorIndex = self._servicesFloorIndex[ "Mail" ]
+        if willingToCheckMail is True:
+            if self._wantToCheckMail() is True:
+                self._log.debug("{0} wants to check mail after parking before going to the apt".format(
+                    self.getName()) )
+                self._checkMail(currFloorIndex, willingToTakeStairs)
+                currFloorIndex = self._servicesFloorIndex[ "Mail" ]
+            elif self._wantToRetrievePackages() is True:
+                self._log.debug("{0} wants to retrive packages after parking before going to the apt".format(
+                    self.getName()) )
+                self._getPackages(currFloorIndex, willingToTakeStairs)
+                currFloorIndex = self._servicesFloorIndex[ "Leasing Office" ]
 
         self._goToApartment(currFloorIndex, willingToTakeStairs)
 
@@ -152,6 +164,19 @@ class BuildingResident(Actor):
 
         # If we haven't today, there's still a pretty low chance we want to
         return random.random() <= self._simulationProbabilities['checkMailAfterParking']
+
+
+    def _wantToRetrievePackages(self):
+        # If we've gotten packages today, definitely not
+        if self._haveRetrievedPackagesToday() is True:
+            return False
+
+        # If we haven't today, there's still a pretty low chance we have any or want to
+        return random.random() <= self._simulationProbabilities['retrivePackages']
+
+
+    def _haveRetrievedPackagesToday(self):
+        return self._retrievedPackagesToday
             
 
     def _haveCheckedMailToday(self):
@@ -170,6 +195,26 @@ class BuildingResident(Actor):
         # Show we've checked mail and add some time
         self._earliestStartTime += datetime.timedelta(minutes=random.randint(1, 10))
         self._checkedMailToday = True
+
+
+    def _getPackages(self, startingFloorIndex, willingToTakeStairs):
+        self._goToLeasingOffice(startingFloorIndex, willingToTakeStairs)
+
+        # Show we've retrieved packages and add some time
+        self._earliestStartTime += datetime.timedelta(
+            minutes=random.randint(1, 5),
+            seconds=random.randint(0,59))
+        self._retrievedPackagesToday = True
+
+
+    def _goToLeasingOffice(self, startingFloorIndex, willingToTakeStairs):
+        # Do we even have to change floors?
+        if startingFloorIndex == self._servicesFloorIndex[ "Leasing Office" ]:
+            # Just add some time for walking
+            self._earliestStartTime += datetime.timedelta(minutes=random.randint(3, 5))
+
+        else:
+            self._changeFloors(startingFloorIndex, self._servicesFloorIndex[ "Leasing Office" ])
 
 
     def _changeFloors(self, startingFloorIndex, endingFloorIndex, willingToTakeStairs=True):
@@ -269,11 +314,18 @@ class BuildingResident(Actor):
        # See if we want to check mail first?
         currFloorIndex = self._floorIndex[ self._homeFloor ]
 
-        if willingToCheckMail is True and self._wantToCheckMail() is True:
-            self._log.debug("{0} wants to check mail on way from apt to car".format(
-                self.getName()) )
-            self._checkMail(currFloorIndex, willingToTakeStairs)
-            currFloorIndex = self._servicesFloorIndex[ "Mail" ]
+        if willingToCheckMail is True:
+            if self._wantToCheckMail() is True:
+                self._log.debug("{0} wants to check mail on way from apt to car".format(
+                    self.getName()) )
+                self._checkMail(currFloorIndex, willingToTakeStairs)
+                currFloorIndex = self._servicesFloorIndex[ "Mail" ]
+
+            if self._wantToRetrievePackages() is True:
+                self._log.debug("{0} wants to retrieve packages on way from apt to car".format(
+                    self.getName()) )
+                self._retrievePackages(currFloorIndex, willingToTakeStairs)
+                currFloorIndex = self._servicesFloorIndex[ "Leasing Office" ]
 
         self._goToCar(currFloorIndex, willingToTakeStairs)
 
