@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 from common.Actor import Actor
 import HighRiseApartments.BuildingActivities 
@@ -19,7 +19,12 @@ class BuildingResident(Actor):
             self._apartmentNumber[0] )
         self._parkingFloor = None
         self._checkedMailToday = False
-        self._checkMailOdds = 0.25 
+
+        self._simulationProbabilities = {
+            'checkMailAfterParking':    0.25,
+            'shoppingOnWayHome':        0.25,
+        }
+
         self._floorIndex = { 
             "Floor 8": 9,
             "Floor 7": 8,
@@ -95,17 +100,7 @@ class BuildingResident(Actor):
                 random.randint(0, 59)
             )
 
-            self._log.debug("Resident {0} returning at {1}".format(
-                self.getName(), returnTime) )
-
-
-            # Unless we're doing walk of shame, we'll drive home
-            self._parkCarInGarage(returnTime)
-
-            # Go from garage to apartment -- this is a meta-activity, other
-            #       intermediate stops (such as checking mail) may happen
-            self._goFromGarageToApt()
-            
+            self._driveHomeGoToApartment(returnTime)
         # We started out at home
         else:
             # self._parkCar()
@@ -131,7 +126,7 @@ class BuildingResident(Actor):
 
 
 
-    def _goFromGarageToApt(self):
+    def _goFromCarToApt(self, willingToCheckMail=True, willingToTakeStairs=True):
         
         # Things we know
         #   * We know time we parked with getting earliest start time, so that can
@@ -141,13 +136,13 @@ class BuildingResident(Actor):
         # See if we want to check mail first?
         currFloorIndex = self._floorIndex[ self._getParkingFloor() ]
 
-        if self._wantToCheckMail() is True:
+        if willingToCheckMail is True and self._wantToCheckMail() is True:
             self._log.debug("{0} wants to check mail after parking before going to the apt".format(
                 self.getName()) )
-            self._checkMail(currFloorIndex)
+            self._checkMail(currFloorIndex, willingToTakeStairs)
             currFloorIndex = self._servicesFloorIndex[ "Mail" ]
 
-        self._goToApartment(currFloorIndex)
+        self._goToApartment(currFloorIndex, willingToTakeStairs)
 
 
     def _wantToCheckMail(self):
@@ -156,14 +151,14 @@ class BuildingResident(Actor):
             return False
 
         # If we haven't today, there's still a pretty low chance we want to
-        return random.random() < self._checkMailOdds
+        return random.random() <= self._simulationProbabilities['checkMailAfterParking']
             
 
     def _haveCheckedMailToday(self):
         return self._checkedMailToday
 
 
-    def _checkMail(self, startingFloorIndex):
+    def _checkMail(self, startingFloorIndex, willingToTakeStairs):
         # Do we even have to change floors?
         if startingFloorIndex == self._servicesFloorIndex[ "Mail" ]:
             # Just add some time for walking
@@ -177,7 +172,7 @@ class BuildingResident(Actor):
         self._checkedMailToday = True
 
 
-    def _changeFloors(self, startingFloorIndex, endingFloorIndex):
+    def _changeFloors(self, startingFloorIndex, endingFloorIndex, willingToTakeStairs=True):
         # Find out if this is a no-op
         if startingFloorIndex == endingFloorIndex:
             return
@@ -191,7 +186,7 @@ class BuildingResident(Actor):
 
         # Are they taking stairs? Odds drop with more floors they need to cover
         floorIndexDelta = abs(endingFloorIndex - startingFloorIndex)
-        if random.random() <= 1.0/abs(floorIndexDelta):
+        if willingToTakeStairs is True and random.random() <= 1.0/abs(floorIndexDelta):
             self._log.debug("{0} is being hardcore and taking the stairs!".format(
                 self.getName()))
 
@@ -206,8 +201,9 @@ class BuildingResident(Actor):
             self._rideElevator(startingFloorIndex, endingFloorIndex)
 
 
-    def _goToApartment(self, startingFloorIndex):
-        self._changeFloors(startingFloorIndex, self._floorIndex[self._homeFloor])
+    def _goToApartment(self, startingFloorIndex, willingToTakeStairs=True ):
+        self._changeFloors(startingFloorIndex, self._floorIndex[self._homeFloor],
+            willingToTakeStairs)
 
 
     def _rideElevator(self, startingFloorIndex, endingFloorIndex):
@@ -217,8 +213,75 @@ class BuildingResident(Actor):
 
         self._addPendingActivity(buttonActivity)
 
-        # Once elevator arrives, press button for correct floor
+        # Figure out elevator ride time
+        floorIndexDelta = abs(endingFloorIndex - startingFloorIndex)
+        # Approximating one second per floor
+        secondsPerFloor = 1.0  
+        elevatorRideTime = datetime.timedelta(seconds=(secondsPerFloor * floorIndexDelta))
+        self._earliestStartTime += elevatorRideTime
+
         
+
+
+    def _driveHomeGoToApartment(self, returnTime):
+        self._log.debug("Resident {0} returning at {1}".format(
+            self.getName(), returnTime) )
+
+        # Do we do any shopping on way home?
+        if random.random() <= self._simulationProbabilities['shoppingOnWayHome']:
+            unloadingTrips = random.randint(1,4)
+            self._log.debug("Resident {0} went shopping on way home, needs {1} ".format(
+                self.getName(), unloadingTrips) + " trips from car to unload")
+        else:
+            unloadingTrips = 0
+
+        self._parkCarInGarage(returnTime)
+
+        # If we didn't do any shopping, only need one trip to apartment, and willing to check mail or
+        #       take stairs
+        if unloadingTrips == 0:
+            self._goFromCarToApt(True, True)
+
+        # We went shopping, assuming they won't check mail or use stairs
+        else:
+            for i in range(unloadingTrips):
+
+                # If this is their last unloading trip they are willing to consider 
+                #   using stairs and checking mail
+                if i == (unloadingTrips -1 ):
+                    isLastTrip = True
+                else:
+                    isLastTrip = False
+
+                self._goFromCarToApt( isLastTrip, isLastTrip )
+
+                # Take a few minutes to get to/from apt and drop stuff off in apartment
+                self._earliestStartTime += datetime.timedelta(
+                    minutes=random.randint(1,5),
+                    seconds=random.randint(0,59) )
+
+                # Need to return to car
+                self._goFromAptToCar()
+
+
+    def _goFromAptToCar(self, willingToCheckMail=True, willingToTakeStairs=True):
+        
+       # See if we want to check mail first?
+        currFloorIndex = self._floorIndex[ self._homeFloor ]
+
+        if willingToCheckMail is True and self._wantToCheckMail() is True:
+            self._log.debug("{0} wants to check mail on way from apt to car".format(
+                self.getName()) )
+            self._checkMail(currFloorIndex, willingToTakeStairs)
+            currFloorIndex = self._servicesFloorIndex[ "Mail" ]
+
+        self._goToCar(currFloorIndex, willingToTakeStairs)
+
+
+    def _goToCar(self, startingFloorIndex, willingToTakeStairs=True):
+        self._changeFloors(startingFloorIndex, self._floorIndex[self._parkingFloor],
+            willingToTakeStairs)
+
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)

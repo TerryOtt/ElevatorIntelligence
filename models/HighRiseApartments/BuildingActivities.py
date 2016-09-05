@@ -61,7 +61,7 @@ class RequestElevator(ScheduledActivity):
 
 
     def getDescription(self):
-        return "requested elevator on floor {0} by pressing {1} button, going to floor {2}".format(
+        return "Pressed {1} button to go from floor index {0} to floor index {2}".format(
             self._startFloorIndex, self._buttonPressed, self._destinationFloorIndex)
         
 

@@ -83,6 +83,10 @@ class Actor:
 
         self._pendingActivities[newActivity.getStartTime()] = newActivity
 
+        # Update next possible time this person will be able do anything
+        self._earliestStartTime = newActivity.getEndTime() + \
+            datetime.timedelta(seconds=1)
+
         self._log.debug("\"{1}\" added activity \"{2}\", starting @ {0} until {3}, duration = {4}".format(
             newActivity.getStartTime(), self.getName(), newActivity.getDescription(), newActivity.getEndTime(),
             newActivity.getDuration()) )
