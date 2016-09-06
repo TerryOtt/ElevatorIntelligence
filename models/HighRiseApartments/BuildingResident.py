@@ -74,6 +74,10 @@ class BuildingResident(Actor):
             'Floor 4',
             'Floor 3' ]
 
+        self._buildingGrillFloors = [
+            'Floor 3',
+            'Floor 2' ]
+
         Actor.__init__(self, "RES {0}-{1}".format(
             apartmentNumber, apartmentResidentID), currDate )
 
@@ -180,10 +184,17 @@ class BuildingResident(Actor):
             else:
                 self._goToClassK12()
 
-        # Home after primary activity.  
+        # Did we do enough stuff to get us to evening hours?  If not, warp ahead
+        currDate = self.getDate()
+        fivePmToday = datetime.datetime(
+            currDate.year, currDate.month, currDate.day, 17, 0, 0)
+        if self._getEarliestStartTime() < fivePmToday:
+            self._earliestStartTime  = fivePmToday
+
+        # Delay after primary activity.
         self._earliestStartTime += datetime.timedelta(
             minutes=random.randint( 5, 60),
-            seconds=random.randint( 0, 59) )
+            seconds=random.randint( 0, 59))
 
         # Test if we are going to consider work out before dinner?
         if random.random() < 0.60:
@@ -199,13 +210,27 @@ class BuildingResident(Actor):
         else:
             self._eatMeal()
 
-            self._earliestStartTime += datetime.timedelta(
-                hours  =random.randint( 1,  2),
-                minutes=random.randint( 0, 59),
-                seconds=random.randint( 0, 59) )
-
             if self._testDailyActivity('workOut') is True:
+                self._earliestStartTime += datetime.timedelta(
+                    hours  =random.randint( 1,  2),
+                    minutes=random.randint( 0, 59),
+                    seconds=random.randint( 0, 59) )
+
                 self._workOut()
+
+        # Are we in for the night?
+        self._earliestStartTime += datetime.timedelta(
+            minutes=random.randint( 5, 119),
+            seconds=random.randint( 0, 59) )
+
+        if random.random() < 0.80:
+            self._log.info("{0} is in for the night at {1}".format(
+                self.getName(), self._getEarliestStartTime()) )
+        else:
+            self._log.info("{0} is spending the night elsewhere".format(
+                self.getName()) )
+            self._goFromAptToCar()
+                
 
         
     def _createWeekendActivities(self):
@@ -385,8 +410,17 @@ class BuildingResident(Actor):
 
         # Do we do any shopping on way home?
         if self._testDailyActivity('goShopping'):
-            unloadingTrips = random.randint(1,4)
-            self._log.info("Resident {0} went shopping on way home, needs {1} ".format(
+            numTripsProb = random.random()
+            if numTripsProb   <= 0.50:
+                unloadingTrips = 1
+            elif numTripsProb <= 0.75:
+                unloadingTrips = 2
+            elif numTripsProb <= 0.87:
+                unloadingTrips = 3
+            else:
+                unloadingTrips = 4
+
+            self._log.info("Resident {0} went shopping on way home, needs {1}".format(
                 self.getName(), unloadingTrips) + " trips from car to unload")
         else:
             unloadingTrips = 0
@@ -479,7 +513,7 @@ class BuildingResident(Actor):
 
 
     def _goToCar(self, startingFloorIndex, willingToCheckMail=True, willingToTakeStairs=True):
-        self._log.debug("{0} is going to their car, possibly with stops".format(
+        self._log.info("{0} is going to their car, possibly with stops".format(
             self.getName()) )
 
         self._changeFloors(startingFloorIndex, self._floorIndex[self._parkingFloor],
@@ -487,8 +521,8 @@ class BuildingResident(Actor):
 
 
     def _workOut(self):
-        self._log.info("{0} is doing their daily workout".format(
-            self.getName()) )
+        self._log.info("{0} is doing their daily workout at {1}".format(
+            self.getName(), self._getEarliestStartTime()) )
 
         # Get changed into gym clothes
         self._earliestStartTime += datetime.timedelta(
@@ -677,14 +711,17 @@ class BuildingResident(Actor):
 
         # Are we eating at a restaurant
         if random.random() <= 0.20:
-            self._log.debug("{0} is leaving to eat a meal".format(
-                self.getName()) )
+            self._log.info("{0} is leaving to eat at a restaurant at {1}".format(
+                self.getName(), self._getEarliestStartTime()) )
             self._leaveBuildingUntilTime(
                 self._floorIndex[self._homeFloor],
                 self._earliestStartTime + 
                     datetime.timedelta(
                         minutes =   random.randint(30, 90),
                         seconds =   random.randint(0, 59)) )
+
+            self._log.info("{0} has returned from the restaurant at {1}".format(
+                self.getName(), self._getEarliestStartTime()) )
 
         # eating at home
         else:
@@ -701,7 +738,7 @@ class BuildingResident(Actor):
 
                 # Does cooking involve grilling in courtyard?
                 if useGrill is True and random.random() <= 0.05:
-                    self._useCourtyardGrillingStation()
+                    self._useCourtyardGrillingStation(self._homeFloor)
 
                 else:
                     # Cooking time
@@ -713,6 +750,9 @@ class BuildingResident(Actor):
             self._earliestStartTime += datetime.timedelta(
                 minutes =   random.randint(20, 89),
                 seconds =   random.randint(0, 59) )
+ 
+        self._log.info("{0} is done eating at {1}".format(
+            self.getName(), self._getEarliestStartTime()) )
 
 
     def _requestDeliveryToApt(self):
@@ -765,8 +805,31 @@ class BuildingResident(Actor):
 
 
     def _useCourtyardGrillingStation(self):
+        self._log.info("{0} is going to grill station to cook dinner".format(
+            self.getName()) )
 
-        pass
+        grillFloor = self._goToGrills(self._homeFloor, willingToTakeStairs=False)
+
+        # Cook dinner
+        self._earliestStartTime += datetime.timedelta(
+            minutes=random.randint(10, 44),
+            seconds=random.randint( 0, 59) )
+
+        # Head back to apartment
+        self._goToApartment( grillFloor, self._homeFloor )
+
+
+    def _goToGrills(self, startingFloor, willingToTakeStairs=True):
+        grillFloor = random.choice( self._buildingGrillFloors )
+
+        # Head down with uncooked food
+        self._changeFloors(
+            self._floorIndex[startingFloor],
+            self._floorIndex[grillFloor],
+            willingToTakeStairs = True)
+
+        return grilFloor
+ 
 
 
     # TODO: need an event for hosting an event -- may involve grilling, going to game room, etc.
