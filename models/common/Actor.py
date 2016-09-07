@@ -96,6 +96,18 @@ class Actor:
         self._log.debug(pprint.pformat(self._pendingActivities))
 
 
+    def getNextPendingActivity(self):
+        # Sort all pending activities
+        sortedKeys = sorted(self._pendingActivities.keys() )
+
+        if len(sortedKeys) == 0:
+            return (None, None)
+
+        returnActivity = self._pendingActivities.pop(sortedKeys[0])
+
+        return ( sortedKeys[0], returnActivity )
+
+
     @abc.abstractmethod
     def _createActivities(self, currDate):
         return

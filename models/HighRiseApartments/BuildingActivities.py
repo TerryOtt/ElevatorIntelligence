@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
 import logging
-from common.ScheduledActivity import ScheduledActivity
+from models.common.ScheduledActivity import ScheduledActivity
 import random
 import datetime
 
@@ -66,11 +66,11 @@ class RequestElevator(ScheduledActivity):
         
 
     def getStartFloor(self):
-        return self._startFloor
+        return self._startFloorIndex
 
 
     def getDestinationFloor(self):
-        return self._destinationFloor
+        return self._destinationFloorIndex
 
 
     def getButtonPressed(self):

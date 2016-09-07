@@ -90,3 +90,6 @@ ENV/
 
 # Ignore editor swap files
 .*.swp
+
+# Ignore run script
+models/run

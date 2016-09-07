@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 
-from common.Actor import Actor
-import HighRiseApartments.BuildingActivities 
+from models.common.Actor import Actor
+import models.HighRiseApartments.BuildingActivities 
 import logging
 import datetime
 import random
@@ -139,7 +139,7 @@ class BuildingResident(Actor):
         # We started out at home
         else:
             # Initialize car to a sane floor
-            self._parkingFloor = HighRiseApartments.BuildingActivities.ParkCar.getRandomParkingFloor()
+            self._parkingFloor = models.HighRiseApartments.BuildingActivities.ParkCar.getRandomParkingFloor()
 
             self._log.debug("Starting out at home, car has been warped to {0}".format(
                 self._parkingFloor) )
@@ -245,7 +245,7 @@ class BuildingResident(Actor):
     def _parkCarInGarage(self, returnTime):
         self._log.info("{0} is parking car in garage at {1}".format( 
             self.getName(), returnTime) )
-        parkActivity = HighRiseApartments.BuildingActivities.ParkCar(returnTime)
+        parkActivity = models.HighRiseApartments.BuildingActivities.ParkCar(returnTime)
 
         # Have to record what floor we parked on to be sane if we leave again later
         self._parkingFloor = parkActivity.getParkingFloor()
@@ -389,7 +389,7 @@ class BuildingResident(Actor):
 
 
     def _rideElevator(self, startingFloorIndex, endingFloorIndex):
-        buttonActivity = HighRiseApartments.BuildingActivities.RequestElevator(
+        buttonActivity = models.HighRiseApartments.BuildingActivities.RequestElevator(
             self._getEarliestStartTime() + datetime.timedelta(seconds=1), 
             startingFloorIndex, endingFloorIndex)
 
@@ -450,8 +450,9 @@ class BuildingResident(Actor):
                     minutes=random.randint(1,5),
                     seconds=random.randint(0,59) )
 
-                # Need to return to car
-                self._goFromAptToCar()
+                # Do we need to return to car?
+                if isLastTrip is False:
+                    self._goFromAptToCar()
 
             self._log.info("{0} is done unloading the car at {1}".format(
                 self.getName(), self._getEarliestStartTime()) )
@@ -529,25 +530,48 @@ class BuildingResident(Actor):
             minutes=random.randint(1,10),
             seconds=random.randint(0,59) )
 
-        self._changeFloors(self._floorIndex[self._homeFloor], 
-            self._servicesFloorIndex[ "Gym" ],
-            willingToTakeStairs=True)
+        # Do we use the building gym? Seems like hardly any do
 
-        # Workout will be 20-90 minutes
-        self._earliestStartTime += datetime.timedelta(
+        if random.random() < 0.15:
+            workOutInBuilding = True
+        else:
+            workOutInBuilding = False
+
+        workoutDuration = datetime.timedelta(
             minutes=random.randint(20,89),
             seconds=random.randint(0,59) )
 
-        # Go back to apt
-        self._changeFloors(
-            self._servicesFloorIndex[ "Gym" ],
-            self._floorIndex[self._homeFloor],
-            willingToTakeStairs=True)
+        if workOutInBuilding is True:
+            self._log.info("{0} is wisely working out in the apartment gym".format(
+                self.getName()) )
+            self._changeFloors(self._floorIndex[self._homeFloor], 
+                self._servicesFloorIndex[ "Gym" ],
+                willingToTakeStairs=True)
 
-        # Get cleaned up
+            self._earliestStartTime += workoutDuration
+
+            # Go back to apt
+            self._goToApartment( self._servicesFloorIndex[ "Gym" ] )
+
+        else:
+            self._log.info("{0} is heading to their off-site gym".format(
+                self.getName()) )
+
+            driveTime = datetime.timedelta(
+                minutes=random.randint(5, 30),
+                seconds=random.randint(0, 59) )
+
+            self._leaveBuildingUntilTime(
+                self._floorIndex[self._homeFloor],
+                self._getEarliestStartTime() + (2 * driveTime) + workoutDuration)
+
+        # Get cleaned up after workout
         self._earliestStartTime += datetime.timedelta(
             minutes=random.randint(5,20),
             seconds=random.randint(0,59) )
+
+        self._log.info("{0} is done with workout and shower at {1}".format(
+            self.getName(), self._getEarliestStartTime()) )
 
 
     def _goToWork(self):
@@ -668,7 +692,6 @@ class BuildingResident(Actor):
             self._walkHomeGoToApartment(returnTime)
         else:
             self._driveHomeGoToApartment(returnTime)
-
 
 
     def _walkOutOfBuilding(self, startingFloorIndex, willingToTakeStairs=True):

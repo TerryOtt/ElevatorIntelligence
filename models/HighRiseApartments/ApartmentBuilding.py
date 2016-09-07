@@ -1,9 +1,9 @@
 #!/usr/bin/python3
 
 import logging
-from common.Building                        import Building
-from HighRiseApartments.BuildingResident    import BuildingResident
-from common.Location                        import Location
+from models.common.Building                        import Building
+from models.HighRiseApartments.BuildingResident    import BuildingResident
+from models.common.Location                        import Location
 import datetime
 import pprint
 import random

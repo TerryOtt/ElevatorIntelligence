@@ -5,6 +5,7 @@ import logging
 import pprint
 import datetime
 import random
+import json
 
 
 class Building:
@@ -28,18 +29,18 @@ class Building:
         return self._buildingLocation
 
 
-    def runModel(self, startDate, endDate):
+    def runModel(self, startDate, endDate, jsonFile):
         if endDate < startDate:
             raise ValueError('End date cannot be before start date')
 
         currDate = startDate
         while currDate <= endDate:
             # NOTE: each days' simulation is independent. Should be its own thread
-            self._simulateDailyActivities(currDate)
+            self._simulateDailyActivities(currDate, jsonFile)
             currDate += datetime.timedelta(days=1)
 
 
-    def _simulateDailyActivities(self, currDate):
+    def _simulateDailyActivities(self, currDate, jsonFile):
         self._log.info("Starting daily activities for {0} on {1}".format(
             self.getName(), currDate.isoformat()) )
         locations = self._getBuildingLocations()
@@ -47,6 +48,36 @@ class Building:
 
         # Each actor will add him or herself to the location model upon instantiation
         actorList = self._createActorsForDay(currDate, locations)
+
+        self._log.info(
+            "\n----\n" + \
+            "---- Launching Actors for {0} on {1} ----".format(
+            self.getName(), currDate) + \
+            "\n----" )
+
+        # Launch each of the actors
+        for currActorName in actorList:
+            self._log.info("Executing activities for {0} actor {1} on {2}".format(
+                self.getName(), currActorName, currDate.isoformat()) ) 
+            currActor = actorList[currActorName]
+            self._log.info("Getting activities for {0}".format(currActor.getName()) )
+
+            (timestamp, activity) = currActor.getNextPendingActivity()
+            while timestamp != None:
+                self._log.info("\tTime {0}: Activity: {1}".format(
+                    timestamp, activity.getType()) )
+
+                # Is it an activity we care about?
+                if activity.getType() == "Request Elevator":
+                    # Find out direction and start/end floor
+                    self._log.info("\t\tDirection: {0}, start floor = {1}, end floor = {2}".format(
+                        activity.getButtonPressed(), 
+                        activity.getStartFloor(), 
+                        activity.getDestinationFloor()) )
+
+                    json.dump(activity, jsonFile)
+
+                (timestamp, activity) = currActor.getNextPendingActivity()
 
 
     @abc.abstractmethod
