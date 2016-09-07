@@ -75,3 +75,14 @@ class RequestElevator(ScheduledActivity):
 
     def getButtonPressed(self):
         return self._buttonPressed
+
+
+    def getJsonDictionary(self):
+        return {
+            'activity_time':        self.getStartTimeString(),
+            'activity_type':        self.getType(),
+            'button_pressed':       self.getButtonPressed(),
+            'start_floor':          self.getStartFloor(),
+            'destination_floor':    self.getDestinationFloor(),
+        }
+            

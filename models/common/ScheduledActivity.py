@@ -26,6 +26,10 @@ class ScheduledActivity():
         return self._activityDuration
 
 
+    def getStartTimeString(self):
+        return self.getStartTime().strftime("%Y%m%d %H%M%S")
+
+
     @abc.abstractmethod
     def getType(self):
         return
@@ -33,4 +37,9 @@ class ScheduledActivity():
 
     @abc.abstractmethod
     def getDescription(self):
+        return
+
+
+    @abc.abstractmethod
+    def getJsonDictionary(self):
         return

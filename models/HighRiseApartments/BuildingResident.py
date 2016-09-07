@@ -700,14 +700,14 @@ class BuildingResident(Actor):
             self.getName()) )
 
         # Find out which floor we're going to 
-        exitFloor = random.choice( self._buildingPedestrianEntranceExitFloors )
+        exitFloorIndex = self._floorIndex[ random.choice( self._buildingPedestrianEntranceExitFloors ) ]
 
         self._changeFloors(
             startingFloorIndex,
-            self._floorIndex[exitFloor],
+            exitFloorIndex,
             willingToTakeStairs )
 
-        return exitFloor 
+        return exitFloorIndex
 
 
     def _goForWalk(self):
@@ -761,7 +761,7 @@ class BuildingResident(Actor):
 
                 # Does cooking involve grilling in courtyard?
                 if useGrill is True and random.random() <= 0.05:
-                    self._useCourtyardGrillingStation(self._homeFloor)
+                    self._useCourtyardGrillingStation()
 
                 else:
                     # Cooking time
@@ -851,7 +851,7 @@ class BuildingResident(Actor):
             self._floorIndex[grillFloor],
             willingToTakeStairs = True)
 
-        return grilFloor
+        return self._floorIndex[grillFloor]
  
 
 

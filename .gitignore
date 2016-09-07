@@ -93,3 +93,9 @@ ENV/
 
 # Ignore run script
 models/run
+
+# Ignore json output
+json_output/
+
+# Drivers
+runHighRise

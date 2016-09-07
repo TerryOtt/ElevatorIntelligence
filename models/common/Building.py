@@ -55,6 +55,8 @@ class Building:
             self.getName(), currDate) + \
             "\n----" )
 
+        dailyActivities = {}
+
         # Launch each of the actors
         for currActorName in actorList:
             self._log.info("Executing activities for {0} actor {1} on {2}".format(
@@ -75,9 +77,17 @@ class Building:
                         activity.getStartFloor(), 
                         activity.getDestinationFloor()) )
 
-                    json.dump(activity, jsonFile)
+                    # Add to list of daily activities
+                    if activity.getStartTime() not in dailyActivities:
+                        dailyActivities[activity.getStartTimeString()] = []
+
+                    dailyActivities[activity.getStartTimeString()].append(activity.getJsonDictionary())
 
                 (timestamp, activity) = currActor.getNextPendingActivity()
+
+
+        # All actors have made their list of activities, serialize daily activities
+        json.dump(dailyActivities, jsonFile, sort_keys=True, indent=4)
 
 
     @abc.abstractmethod
