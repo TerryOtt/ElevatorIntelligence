@@ -99,3 +99,6 @@ json_output/
 
 # Drivers
 runHighRise
+
+# Ignore pybrain source
+pybrain/library/

@@ -16,6 +16,7 @@ class Building:
         self._log = logging.getLogger(__name__)
         self._buildingName = buildingName
         self._buildingLocation = buildingLocation
+        self._fullActivityList = {}
 
         # Seed PRNG (exactly once)
         random.seed()
@@ -38,6 +39,10 @@ class Building:
             # NOTE: each days' simulation is independent. Should be its own thread
             self._simulateDailyActivities(currDate, jsonFile)
             currDate += datetime.timedelta(days=1)
+
+        # Dump out activity list
+        json.dump(self._fullActivityList, jsonFile, sort_keys=True, indent=4)
+
 
 
     def _simulateDailyActivities(self, currDate, jsonFile):
@@ -86,8 +91,8 @@ class Building:
                 (timestamp, activity) = currActor.getNextPendingActivity()
 
 
-        # All actors have made their list of activities, serialize daily activities
-        json.dump(dailyActivities, jsonFile, sort_keys=True, indent=4)
+        # Merge this day's activities into master list
+        self._fullActivityList = { **self._fullActivityList, **dailyActivities }
 
 
     @abc.abstractmethod

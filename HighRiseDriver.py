@@ -9,6 +9,7 @@ import os.path
 
 def parseArgs():
     parser = argparse.ArgumentParser(description="Elevator simulation driver for high rise apts") 
+    parser.add_argument('number_days', help="Number of days to simulation")
     parser.add_argument('json_dir', help="Directory for JSON output")
     return parser.parse_args()
 
@@ -20,7 +21,7 @@ def main():
         raise ValueError("{0} is not a valid directory for JSON output".format(
             args.json_dir) )
 
-    timeToRun = datetime.timedelta(days=365)
+    timeToRun = datetime.timedelta(days=int(args.number_days))
 
     currDate = datetime.date( 2016, 12, 15 )
     with open( os.path.join(args.json_dir, "{0}{1}{2}.json".format(
