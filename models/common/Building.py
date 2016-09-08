@@ -16,7 +16,6 @@ class Building:
         self._log = logging.getLogger(__name__)
         self._buildingName = buildingName
         self._buildingLocation = buildingLocation
-        self._fullActivityList = {}
 
         # Seed PRNG (exactly once)
         random.seed()
@@ -40,10 +39,6 @@ class Building:
             self._simulateDailyActivities(currDate, jsonFile)
             currDate += datetime.timedelta(days=1)
 
-        # Dump out activity list
-        json.dump(self._fullActivityList, jsonFile, sort_keys=True, indent=4)
-
-
 
     def _simulateDailyActivities(self, currDate, jsonFile):
         self._log.info("Starting daily activities for {0} on {1}".format(
@@ -62,7 +57,7 @@ class Building:
 
         dailyActivities = {}
 
-        # Launch each of the actors
+        # Get list of scheduled activities for each actor
         for currActorName in actorList:
             self._log.info("Executing activities for {0} actor {1} on {2}".format(
                 self.getName(), currActorName, currDate.isoformat()) ) 
@@ -74,25 +69,17 @@ class Building:
                 self._log.info("\tTime {0}: Activity: {1}".format(
                     timestamp, activity.getType()) )
 
-                # Is it an activity we care about?
-                if activity.getType() == "Request Elevator":
-                    # Find out direction and start/end floor
-                    self._log.info("\t\tDirection: {0}, start floor = {1}, end floor = {2}".format(
-                        activity.getButtonPressed(), 
-                        activity.getStartFloor(), 
-                        activity.getDestinationFloor()) )
+                # Add to list of daily activities
+                if activity.getStartTime() not in dailyActivities:
+                    dailyActivities[activity.getStartTimeString()] = []
 
-                    # Add to list of daily activities
-                    if activity.getStartTime() not in dailyActivities:
-                        dailyActivities[activity.getStartTimeString()] = []
-
-                    dailyActivities[activity.getStartTimeString()].append(activity.getJsonDictionary())
+                dailyActivities[activity.getStartTimeString()].append(activity.getJsonDictionary())
 
                 (timestamp, activity) = currActor.getNextPendingActivity()
 
-
-        # Merge this day's activities into master list
-        self._fullActivityList = { **self._fullActivityList, **dailyActivities }
+        # Pass the day's activity list to the elevator model for simulation
+        self._elevatorModel.simulateDay(dailyActivities)
+        
 
 
     @abc.abstractmethod
