@@ -3,22 +3,38 @@
 import logging
 import abc
 import models.common.ElevatorLogicModel
+import datetime
+
 
 class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicModel):
     def __init__(self):
         self._name = "Logic Model - Standard"
         self._log = logging.getLogger(__name__)
 
-    def addActivity(self, elevatorActivity, elevatorBank):
-        self._log.info("Elevator logic {0} received activity type {1} from bank {2} at {3}".format(
-            self.getName(), elevatorActivity.getType(), elevatorBank.getName(),
-            elevatorActivity.getStartTime()) )
+    def simulateElevators(self, elevatorBank):
+        # Get the starting timeline (just request elevator events so far)
+        elevatorTimeline = elevatorBank.getElevatorTimeline()
 
-        if elevatorActivity.getType() == "Request Elevator":
-            self._processElevatorRequest(elevatorActivity, elevatorBank)
+        sortedTimestamps = sorted( elevatorTimeline.keys() )
+
+        # Walk time through and handle events as we find them
+        simulationTime = datetime.datetime.strptime( sortedTimestamps[0], "%Y%m%d %H%M%S" )
+
+        simulationTimestamp = sortedTimestamps[0]
+
+        while simulationTimestamp < sortedTimestamps[len(sortedTimestamps) - 1 ]:
+            # Any activities at this point?
+            if simulationTimestamp in sortedTimestamps:
+                self._log.info("Found activity at {0}".format(
+                    simulationTimestamp) )
+
+            simulationTime += datetime.timedelta(seconds=1)
+            simulationTimestamp = simulationTime.strftime("%Y%m%d %H%M%S")
 
 
-    def _processElevatorRequest(self, elevatorActivity, elevatorBank):
+
+    def _processElevatorRequest(self, elevatorRequest):
+        
         # Create a new person object 
         newPerson = elevatorBank.createNewRiderId()
 
@@ -35,3 +51,5 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
         elevatorBank.addRiderToElevatorQueue(
             elevatorActivity.getStartTime(), newPerson, startingFloorIndex, 
             travelDirection)
+
+        # Record button press to record 1+ rider waiting

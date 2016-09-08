@@ -13,6 +13,7 @@ class ElevatorBank:
         self._numElevatorsInBank = len(self._elevators)
         self._floors = {}
         self._riderId = 0
+        self._elevatorActivityTimeline = {}
 
         self._log.info("Created new elevator bank {0} with logic {1} containing {2} elevators".format(
             self.getName(), self.getBankLogicName(), self._numElevatorsInBank) )
@@ -65,8 +66,27 @@ class ElevatorBank:
 
                 # Is it one we care about?
                 if currActivity.getType() == "Request Elevator":
-                    # Pass to bank logic which will call back into us with responses
-                    self._bankLogic.addActivity(currActivity, self)
+                    # Add to our bank's timeline of events
+                    self.addEventToElevatorTimeline(currActivity)
+
+        # Use the bank logic to process our timeline, which will call back into us for additional
+        #       actions
+        self._bankLogic.simulateElevators(self)
+
+
+    def addEventToElevatorTimeline(self, activity):
+        timestamp = activity.getStartTimeString()
+
+        if timestamp not in self._elevatorActivityTimeline:
+            self._elevatorActivityTimeline[timestamp] = []
+
+        # Add the event
+        self._elevatorActivityTimeline[timestamp].append(activity)
+
+
+    def getElevatorTimeline(self):
+        return self._elevatorActivityTimeline
+
 
     def createNewRiderId(self):
         self._riderId += 1
