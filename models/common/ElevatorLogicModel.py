@@ -12,3 +12,7 @@ class ElevatorLogicModel:
 
     def getName(self):
         return self._name
+
+    @abc.abstractmethod
+    def addActivity(self, elevatorActivity, elevatorBank):
+        return

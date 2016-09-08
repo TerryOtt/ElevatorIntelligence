@@ -5,7 +5,6 @@ import logging
 import pprint
 import datetime
 import random
-import json
 
 
 class Building:
@@ -29,18 +28,18 @@ class Building:
         return self._buildingLocation
 
 
-    def runModel(self, startDate, endDate, jsonFile):
+    def runModel(self, startDate, endDate):
         if endDate < startDate:
             raise ValueError('End date cannot be before start date')
 
         currDate = startDate
         while currDate <= endDate:
             # NOTE: each days' simulation is independent. Should be its own thread
-            self._simulateDailyActivities(currDate, jsonFile)
+            self._simulateDailyActivities(currDate)
             currDate += datetime.timedelta(days=1)
 
 
-    def _simulateDailyActivities(self, currDate, jsonFile):
+    def _simulateDailyActivities(self, currDate):
         self._log.info("Starting daily activities for {0} on {1}".format(
             self.getName(), currDate.isoformat()) )
         locations = self._getBuildingLocations()
@@ -73,12 +72,12 @@ class Building:
                 if activity.getStartTime() not in dailyActivities:
                     dailyActivities[activity.getStartTimeString()] = []
 
-                dailyActivities[activity.getStartTimeString()].append(activity.getJsonDictionary())
+                dailyActivities[activity.getStartTimeString()].append(activity)
 
                 (timestamp, activity) = currActor.getNextPendingActivity()
 
         # Pass the day's activity list to the elevator model for simulation
-        self._elevatorModel.simulateDay(dailyActivities)
+        elevatorModel.processBankActivityList( "Elevator Bank - Middle", dailyActivities )
         
 
 

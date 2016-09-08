@@ -8,6 +8,7 @@ import models.common.ElevatorLogicModelStandard
 class ElevatorModel:
 
     def __init__(self, buildingName, buildingLocation):
+        self._log = logging.getLogger(__name__)
         self._buildingName = buildingName
         self._buildingLocation = buildingLocation
         self._elevatorBanks = {}

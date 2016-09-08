@@ -1,9 +1,10 @@
 #!/usr/bin/python3
 
 import logging
-from models.common.Building                        import Building
-from models.HighRiseApartments.BuildingResident    import BuildingResident
-from models.common.Location                        import Location
+from models.common.Building                         import Building
+from models.HighRiseApartments.BuildingResident     import BuildingResident
+from models.common.Location                         import Location
+import models.common.ElevatorModel                    
 import datetime
 import pprint
 import random
@@ -25,10 +26,27 @@ class ApartmentBuilding(Building):
         }
 
         return buildingLocations
-
   
     def _getElevatorModel(self):
-        return None
+        eModel = models.common.ElevatorModel.ElevatorModel( "High Rise Apts", "Anywhere, USA" )
+        floorList = [
+            "Floor G",
+            "Floor 1",
+            "Floor 2",
+            "Floor 3",
+            "Floor 4",
+            "Floor 5",
+            "Floor 6",
+            "Floor 7",
+            "Floor 8"
+        ]
+
+        logicModel = models.common.ElevatorLogicModelStandard.ElevatorLogicModelStandard()
+
+        eModel.createElevatorBank( "Elevator Bank - Middle", logicModel, [ "Middle Elevator" ], floorList )
+
+        return eModel
+
 
 
     def _createActorsForDay(self, currDate, buildingLocations):
