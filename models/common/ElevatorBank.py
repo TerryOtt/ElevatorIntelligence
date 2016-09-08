@@ -20,10 +20,15 @@ class ElevatorBank:
         floorIndex = 0
         self._log.info("Floors:")
         for currFloor in floorList:
-            self._floors[currFloor] = floorIndex
+            self._floors[currFloor] = { 
+                'floorIndex': floorIndex,
+                'elevatorQueueUp': [],
+                'elevatorQueueDown': [],
+            }
+
             floorIndex += 1
             self._log.info("\t{0} => floor index {1}".format(
-                currFloor, self._floors[currFloor]) )
+                currFloor, self._floors[currFloor]['floorIndex']) )
 
             
     def getName(self):
