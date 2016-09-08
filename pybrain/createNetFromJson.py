@@ -5,6 +5,7 @@ import pybrain
 import pybrain.tools.shortcuts
 import pybrain.datasets
 import pybrain.supervised.trainers
+import pybrain.tools.customxml.networkwriter
 import json
 import argparse
 import math
@@ -26,6 +27,9 @@ def main():
     # Start the training phase
     performTraining(neuralNet, dataset, args.training_epochs)
 
+    # Save network to disk
+    persistNetwork(neuralNet)
+    
 
 def parseArgs():
     argParser = argparse.ArgumentParser(description="Create neural net")
@@ -153,12 +157,27 @@ def performTraining( neuralNet, trainingDataset, numberOfTrainingEpochs ):
             oldError = epochError
 
     else:
-        logging.warn("\nTraining: starting training, running to convergence")
-        trainer.trainUntilConvergence()
+        logging.warn("Training: starting training @ {0}, running to convergence".format(
+            datetime.datetime.utcnow()) )
+        trainer.trainUntilConvergence(verbose=True)
+        logging.warn("Training: network converted @ {0}".format(
+            datetime.datetime.utcnow()) )
 
-     
+
+def persistNetwork(neuralNet):
+    currentDatetime = datetime.datetime.utcnow()
+    filename = "ElevatorIntelligence-net-{0}.xml".format(
+        currentDatetime.strftime("%Y%m%d%H%M%S") )
+
+    pybrain.tools.customxml.networkwriter.NetworkWriter.writeToFile( neuralNet, 
+        filename )
+
+    logging.warn("Wrote network to file {0}".format(filename) )
+
+
 
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.DEBUG)
     main()
+
