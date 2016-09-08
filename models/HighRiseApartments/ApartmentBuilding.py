@@ -34,11 +34,24 @@ class ApartmentBuilding(Building):
     def _createActorsForDay(self, currDate, buildingLocations):
         self._log.debug("Building {0} creating actors for date {1}".format(
             self.getName(), currDate.isoformat()) )
-        resident = BuildingResident("819", 1, currDate)
 
-        buildingLocations[resident.getLocation()].addActorToLocation(
-            resident, datetime.datetime(currDate.year, currDate.month, currDate.day))
-        actorList = { resident.getName(): resident }
+        # resident = BuildingResident("819", 1, currDate)
+
+        # buildingLocations[resident.getLocation()].addActorToLocation(
+        #    resident, datetime.datetime(currDate.year, currDate.month, currDate.day))
+
+        # Add residents by floor
+        actorList = {}
+        for currFloor in range(2, 9):
+            # Determine number of residents on this floor
+            numberResidentsOnFloor = random.randint(10, 30)
+
+            for currFloorResident in range(1,numberResidentsOnFloor + 1):
+                newResident = BuildingResident( "{0}{1:02d}".format(
+                    currFloor, currFloorResident), 1, currDate)
+
+                actorList[ newResident.getName() ] = newResident
+
         return actorList
 
 

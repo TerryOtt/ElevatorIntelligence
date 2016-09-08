@@ -611,11 +611,17 @@ class BuildingResident(Actor):
 
         # Run some errands?
         if random.random() < 0.80:
-            self._log.debug("{0} is running an errand".format(self.getName()) )
+            self._log.info("{0} is running an errand at {1}".format(self.getName(),
+                self._getEarliestStartTime()) )
+
             returnTime = self._earliestStartTime + \
                 datetime.timedelta(
-                    minutes =   random.randint(0, 179),
-                    seconds =   random.randint(0, 59) )
+                    minutes =   random.randint(30, 179),
+                    seconds =   random.randint( 0, 59))
+
+            self._log.info("{0} errand ends at {1}".format(
+                self.getName(), returnTime) )
+
 
             self._leaveBuildingUntilTime(
                 self._floorIndex[self._homeFloor],
@@ -712,7 +718,7 @@ class BuildingResident(Actor):
 
     def _goForWalk(self):
 
-        self._log.debug("{0} is leaving the apt and going for a walk".format(
+        self._log.info("{0} is leaving the apt and going for a walk".format(
             self.getName()) )
 
         exitFloor = self._walkOutOfBuilding(self._floorIndex[self._homeFloor])
