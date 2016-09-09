@@ -99,6 +99,10 @@ json_output/
 
 # Drivers
 runHighRise
+runStdSim
 
 # Ignore pybrain source
 pybrain/library/
+
+# Drivers directory
+drivers/

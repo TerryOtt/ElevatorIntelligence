@@ -5,6 +5,7 @@ import logging
 import pprint
 import datetime
 import random
+import json
 
 
 class Building:
@@ -16,7 +17,7 @@ class Building:
         self._buildingName = buildingName
         self._buildingLocation = buildingLocation
 
-        # Seed PRNG (exactly once)
+        # Seed once and only once
         random.seed()
 
 
@@ -28,18 +29,30 @@ class Building:
         return self._buildingLocation
 
 
-    def runModel(self, startDate, endDate):
+    def generateActivityJsonFile(self, startDate, endDate, jsonFilename):
         if endDate < startDate:
             raise ValueError('End date cannot be before start date')
+
+        fullActivityList = {}
 
         currDate = startDate
         while currDate <= endDate:
             # NOTE: each days' simulation is independent. Should be its own thread
-            self._simulateDailyActivities(currDate)
+            todaysActivities = self._scheduleDailyActivities(currDate)
             currDate += datetime.timedelta(days=1)
 
+            # Merge into master activitylist
+            fullActivityList = { **fullActivityList, **todaysActivities }
 
-    def _simulateDailyActivities(self, currDate):
+        # Write JSON to disk
+        with open( jsonFilename, 'w' ) as jsonFile:
+            json.dump(fullActivityList, jsonFile, sort_keys=True, indent=4 )
+
+        self._log.info("Activity list for {0} from {1}-{2} written to {3}".format(
+            self.getName(), startDate, endDate, jsonFilename) )
+
+
+    def _scheduleDailyActivities(self, currDate):
         self._log.info("Starting daily activities for {0} on {1}".format(
             self.getName(), currDate.isoformat()) )
         locations = self._getBuildingLocations()
@@ -50,7 +63,7 @@ class Building:
 
         self._log.info(
             "\n----\n" + \
-            "---- Launching Actors for {0} on {1} ----".format(
+            "---- Creating activities for {0} on {1} ----".format(
             self.getName(), currDate) + \
             "\n----" )
 
@@ -72,14 +85,19 @@ class Building:
                 if activity.getStartTime() not in dailyActivities:
                     dailyActivities[activity.getStartTimeString()] = []
 
-                dailyActivities[activity.getStartTimeString()].append(activity)
+                dailyActivities[activity.getStartTimeString()].append(activity.getJsonDictionary())
 
                 (timestamp, activity) = currActor.getNextPendingActivity()
 
-        # Pass the day's activity list to the elevator model for simulation
-        elevatorModel.processBankActivityList( "Elevator Bank - Middle", dailyActivities )
-        
+        return dailyActivities
 
+
+    def simulateElevators(self, bankName, bankActivitiesJson, statsFile):
+        statistics = self._getElevatorModel().processBankActivityList( bankName, bankActivitiesJson )     
+
+        with open( statsFile, 'w' ) as statsHandle:
+            json.dump(statistics, statsHandle, sort_keys=True, indent=4 )
+        
 
     @abc.abstractmethod
     def _getBuildingLocations(self):
