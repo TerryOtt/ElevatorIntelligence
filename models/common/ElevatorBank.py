@@ -3,6 +3,7 @@
 import logging
 import random
 import math
+import pprint
 
 
 class ElevatorBank:
@@ -108,7 +109,8 @@ class ElevatorBank:
         return returnRiderId
 
 
-    def addRiderToElevatorQueue(self, timeEnterQueue, riderName, startingFloorIndex, travelDirection):
+    def addRiderToElevatorQueue(self, timeEnterQueue, riderName, startingFloorIndex, 
+            destinationFloorIndex, travelDirection):
 
         if travelDirection == "UP":
             queueName = "elevatorQueueUp"
@@ -124,8 +126,8 @@ class ElevatorBank:
             raise ValueError("Could not add {0} to floor {1} queue {2}, already in it!".format(
                 riderName, buildingFloorName, queueName) )
 
-        # Add to end of queue -- with time person entered
-        buildingFloorQueue.append( (timeEnterQueue, riderName) )
+        # Add to end of queue -- with time person entered and their destination floor
+        buildingFloorQueue.append( (timeEnterQueue, riderName, destinationFloorIndex) )
 
         # Increment count of total queued riders
         self._queuedRidersIncrement()
@@ -146,9 +148,9 @@ class ElevatorBank:
         return True
 
 
-    def activateClosestIdleElevator(self, requestFloorIndex):
-        self._log.info("Have a request on floor {0}, finding best idle elevator to serve".format(
-            self._floorNameLookup[requestFloorIndex]) )
+    def activateClosestIdleElevator(self, simulationTimestamp, requestFloorIndex):
+        self._log.info("{0} request on floor {1}, finding best idle elevator to serve".format(
+            simulationTimestamp, self._floorNameLookup[requestFloorIndex]) )
 
         closestElevatorIndex = len(self._elevators)
         smallestFloorDelta = len(self._floors) + 1
@@ -168,7 +170,7 @@ class ElevatorBank:
         if smallestFloorDelta == 0:
             self._log.info("Dumb luck, elevator {0} was already idle at that floor")
 
-            self.initiateElevatorLoadingEvolution(activatingElevator)
+            self.initiateElevatorLoadingEvolution(simulationTimestamp, activatingElevator)
 
         else:
             self._log.info("Activating elevator {0}, currently on {1}, to service request on {2}".format(
@@ -185,22 +187,25 @@ class ElevatorBank:
         timespanInSeconds = simulationTimeslice.seconds
 
         for currElevator in self._elevators:
-            if currElevator.isActive() is True:
+            if self._isElevatorEligibleToMove(currElevator) is True:
 
-                self._log.info("{0}: {1} is active".format(
+                self._log.info("{0}: {1} is eligible to move".format(
                     simulationTime, currElevator.getName()) )
 
                 # Determine if we need to make a stop
-                (shouldStop, whereStop) =  self._bankLogic.shouldStopToServiceRequest(currElevator,
+                #(shouldStop, whereStop) = self._bankLogic.shouldStopToLoadUnload(currElevator,
+                #    self, simulationTimeslice)
+
+                (shouldStop, whereStop) = self._bankLogic.shouldStopToLoadUnload(currElevator,
                     self, simulationTimeslice)
 
                 if shouldStop is True:
-                    self._log.info("{0} told to stop at {1} to service request".format(
+                    self._log.info("{0} told to stop at {1} to load or unload".format(
                         currElevator.getName(), self._floorNameLookup[whereStop]) )
 
                     currElevator.setFloorIndex(whereStop)
 
-                    self.initiateElevatorLoadingEvolution(currElevator)
+                    self.initiateElevatorLoadingEvolution(simulationTime, currElevator)
                      
                     
                 else:
@@ -248,10 +253,99 @@ class ElevatorBank:
         return len(self._floors[self._floorNameLookup[floorIndex]][searchQueue]) > 0
 
 
-    def initiateElevatorLoadingEvolution(self, elevator):
+    def initiateElevatorLoadingEvolution(self, simulationTimestamp, elevator):
 
         self._log.info("{0} starting elevator loading evolution on {1}".format(
             elevator.getName(), self._floorNameLookup[elevator.getFloorIndex()]) )
 
+        # Elevator is stopped at a floor and about to load people on, we can now
+        #   tell if we need to flip direction of the elevator.  The direction
+        #   of the elevator tells it what queue to pull from when loading
+
+        buildingFloor = self._floors[self._floorNameLookup[elevator.getFloorIndex()]]
+        
+        # Was elevator chilling at this floor idle when button was pressed
+        if elevator.getTravelDirection() == 0:
+            # Set direction to first button press on this floor
+            upQueueTime  = simulationTimestamp
+            downWaitTime = simulationTimestamp
+
+            if len(buildingFloor['elevatorQueueUp']) > 0:
+                upQueueTime = buildingFloor['elevatorQueueUp'][0][0]
+
+            if len(buildingFloor['elevatorQueueDown']) > 0:
+                downQueueTime = buildingFloor['elevatorQueueDown'][0][0]
+
+            # Which timestamp is smaller? Up wins ties cause... gotta do something
+            if upQueueTime <= downQueueTime:
+                elevator.setTravelDirection(1)
+            else:
+                elevator.setTravelDirection(-1)
+
+        else:
+            # If there's nobody in the queue for the current direction of travel,
+            #       flip direction
+
+            if ( elevator.getTravelDirection() == -1 and \
+                    len(buildingFloor['elevatorQueueDown']) == 0):
+                self._log.info("{0} flipping direction to up; nobody in down queue on this floor".format(
+                    elevator.getName()) )
+                elevator.setTravelDirection(1)
+
+            elif ( elevator.getTravelDirection() == 1 and \
+                    len(buildingFloor['elevatorQueueUp']) == 0):
+                self._log.info("{0} flipping direction to down; nobody in up queue on this floor".format(
+                    elevator.getName()) )
+                elevator.setTravelDirection(-1)
+
+
         elevator.initiateLoadingEvolution()
-            
+
+
+    def _isElevatorEligibleToMove(self, elevator):
+
+        return (elevator.isActive() is True and \
+            elevator.isLoadingEvolutionInProcess() is False)
+
+
+    def continueUnloadingLoadingOperations(self, simulationTime, timeResolution):
+        for currElevator in self._elevators: 
+            if currElevator.isLoadingEvolutionInProcess() is True:
+                currElevator.continueLoadingEvolution(simulationTime, timeResolution, self)
+   
+
+    def loadPassengers(self, simulationTimestamp, elevator):
+        # Which floor
+        floor = self._floors[self._floorNameLookup[elevator.getFloorIndex()]]
+
+        # Which queue to load from? Elevator direction tells us 
+        if elevator.getTravelDirection() == 1:
+            loadQueueName = 'elevatorQueueUp'
+        elif elevator.getTravelDirection() == -1:
+            loadQueueName = 'elevatorQueueDown'
+        else:
+            raise ValueError("Elevator travel direction should NEVER be zero when loading")
+
+        loadQueue = floor[loadQueueName]
+
+        # How many people can fit on the elevator?
+        availableCapacity = elevator.getAvailablePassengerCapacity()
+
+        # Load as many as the elevator can take up to queue size
+        peopleBoarding = min( availableCapacity, len(loadQueue) )
+
+        self._log.info("Loading {0} passengers from {1} onto {2}".format(
+            peopleBoarding, loadQueueName, elevator.getName()) )
+
+        for i in range(peopleBoarding):
+            (queueTime, passengerId, destinationFloorIndex) = loadQueue[i]
+
+            self._log.info("Boarding {0} with queue time {1} and destination {2} onto {3}".format(
+                passengerId, queueTime, destinationFloorIndex, elevator.getName()) )
+
+            elevator.loadPassenger(simulationTimestamp, passengerId, queueTime, destinationFloorIndex )
+
+
+        # Replace the load queue with the subset that DID NOT board
+        loadQueue = loadQueue[peopleBoarding:]
+

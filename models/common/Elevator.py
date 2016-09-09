@@ -1,6 +1,8 @@
 #!/usr/bin/python3
 
 import logging
+import random
+
 
 class Elevator:
     
@@ -15,6 +17,7 @@ class Elevator:
         self._secondsPerFloor = secondsPerFloor
         self._loadingEvolutionPhase = None
         self._loadingEvolutionPhaseTimeRemaining = None
+        self._passengersByFloor = {}
 
 
     def getName(self):
@@ -37,7 +40,7 @@ class Elevator:
 
 
     def isIdle(self):
-        return self._travelDirection == 0
+        return (self._travelDirection == 0 and self.isLoadingEvolutionInProcess() is False)
 
 
     def isActive(self):
@@ -73,23 +76,27 @@ class Elevator:
         self._loadingEvolutionPhase = "DoorsOpening"
         self._loadingEvolutionPhaseTimeRemaining = self._doorOpenCloseTime
 
-        self._log.info("{0} has been set to start doors opening on next logic iteration")
+        self._log.info("{0} has been set to start doors opening on next logic iteration".format(
+            self.getName()) )
 
 
     def isLoadingEvolutionInProcess(self):
         return self._loadingEvolutionPhase != None
 
 
-    def continueLoadingEvolution(self, simulationTimeslice, elevatorBank):
+    def continueLoadingEvolution(self, simulationTime, simulationTimeslice, elevatorBank):
         secondsRemaining = simulationTimeslice.seconds
 
-        while abs(secondsRemaining) > 0.001:
+        self._log.info("{0} continuing loading evolution at {1}".format(
+            self.getName(), simulationTime) )
+
+        while abs(secondsRemaining) > 0.001 and self._loadingEvolutionPhaseTimeRemaining != None:
             timeSpent = min(secondsRemaining, self._loadingEvolutionPhaseTimeRemaining)
 
             self._loadingEvolutionPhaseTimeRemaining -= timeSpent
             secondsRemaining -= timeSpent
 
-            self._log.info("{0} performed {1} seconds of loading phase {2}, {3} seconds remain".format(
+            self._log.info("{0} performed {1:4.2f} seconds of loading phase {2}, {3:4.2f} seconds remain".format(
                 self.getName(), timeSpent, self._loadingEvolutionPhase, self._loadingEvolutionPhaseTimeRemaining) )
 
             # Did we complete the current phase
@@ -99,11 +106,12 @@ class Elevator:
 
                 self._transitionToNextLoadingPhase(elevatorBank)
 
-                # TODO: if this was boarding phase, need to update queues and update queue wait stats
+                # If we just switched to loading phase, hand off to 
+                #       elevator to add people (which adds time     
+                #       to loading phase per person)
                 if self._loadingEvolutionPhase == 'Loading':
-                    pass
+                    elevatorBank.loadPassengers(simulationTime, self)
 
-                self._transitionToNextLoadingPhase()
 
     def _transitionToNextLoadingPhase(self, elevatorBank):
         oldPhase = self._loadingEvolutionPhase
@@ -111,25 +119,67 @@ class Elevator:
         if self._loadingEvolutionPhase == "DoorsOpening":
             self._loadingEvolutionPhase = "Unloading"
 
-            # TODO: this needs to be based on number of people getting off on this floor
-            self._loadingEvolutionPhaseTimeRemaining = random.random() * 15.0
+            if self.getFloorIndex() not in self._passengersByFloor:
+                self._passengersByFloor[self.getFloorIndex()] = []
+
+            numberUnloading = len( self._passengersByFloor[self.getFloorIndex()])
+
+            self._log.info("{0} people getting off on this floor".format(
+                numberUnloading) )
+
+            self._elevatorCurrentOccupants -= numberUnloading
+
+            self._log.info("{0} occupants remain in elevator".format(
+                self._elevatorCurrentOccupants) )
+
+            # 1-2 seconds per person to get off elevator
+            self._loadingEvolutionPhaseTimeRemaining = \
+                (1.0 + random.random()) * numberUnloading
+
+            self._passengersByFloor[self.getFloorIndex()] = []
 
         elif self._loadingEvolutionPhase == "Unloading":
             self._loadingEvolutionPhase = "Loading"
 
-            # TODO: this needs to be based on number of people getting on elevator
-            self._loadingEvolutionPhaseTimeRemaining = random.random() * 15.0
+            # Don't set time for this phase -- this is done by elevator bank 
 
         elif self._loadingEvolutionPhase == "Loading":
             self._loadingEvolutionPhase = "DoorsClosing"
 
-            # TODO: this needs to be based on number of people boarding
             self._loadingEvolutionPhaseTimeRemaining = self._doorOpenCloseTime
 
         elif self._loadingEvolutionPhase == "DoorsClosing":
             self._loadingEvolutionPhase = None
             self._loadingEvolutionPhaseTimeRemaining = None
 
-        self._log.info("{0} transitioned from {1} to {2}, {3} seconds remaining".format(
-            self.getName(), oldPhase, self._loadingEvolutionPhase,
-            self._loadingEvolutionPhaseTimeRemaining) )
+        if self._loadingEvolutionPhase != None:
+            self._log.info("{0} transitioned from {1} to {2}, {3:4.2f} seconds remaining".format(
+                self.getName(), oldPhase, self._loadingEvolutionPhase,
+                self._loadingEvolutionPhaseTimeRemaining) )
+        else:
+            self._log.info("{0} completed loading/unloading evolution".format(
+                self.getName()) )
+
+
+    def getAvailablePassengerCapacity(self):
+        return self._elevatorMaxCapacity - self._elevatorCurrentOccupants
+
+
+    def loadPassenger(self, simulationTimestamp, passengerId, queueTime, 
+            destinationFloorIndex):
+
+        if self.getAvailablePassengerCapacity() < 1:
+            raise RuntimeError('Tried to load people onto elevator that was full')
+
+        if destinationFloorIndex not in self._passengersByFloor:
+            self._passengersByFloor[destinationFloorIndex] = []
+
+        self._passengersByFloor[destinationFloorIndex].append(
+            (simulationTimestamp, passengerId, queueTime) )
+
+        self._elevatorCurrentOccupants += 1
+
+
+    def carryingPassengersWithDestinationFloor(self, candidateFloorIndex):
+        return ( candidateFloorIndex in self._passengersByFloor and
+            len(self._passengersByFloor) > 0 )
