@@ -24,16 +24,14 @@ def main():
     # Create dataset
     dataset = createDataset(args.json_dir)
 
-    # Start the training phase
-    performTraining(neuralNet, dataset, args.training_epochs)
+    # Start the training phase (saves network when done)
+    performTraining(neuralNet, dataset, args.network_dir, args.training_epochs)
 
-    # Save network to disk
-    persistNetwork(neuralNet)
-    
 
 def parseArgs():
     argParser = argparse.ArgumentParser(description="Create neural net")
     argParser.add_argument('json_dir', help='Directory with JSON files')
+    argParser.add_argument('network_dir', help='Directory to save neural nets after training')
     argParser.add_argument('training_epochs', help='Number of training epochs to run', type=int)
     return argParser.parse_args()
 
@@ -138,36 +136,46 @@ def createDataset(jsonDir):
     return dataset
         
 
-def performTraining( neuralNet, trainingDataset, numberOfTrainingEpochs ):
-    trainer = pybrain.supervised.trainers.BackpropTrainer(neuralNet, trainingDataset)
+def performTraining( neuralNet, trainingDataset, networkSaveDir, numberOfTrainingEpochs ):
+
+    # Make sure we have someplace to save data
+    if os.path.isdir(networkSaveDir) is False:
+        raise ValueError("Cannot save networks to {0}, not a directory".format(
+            networkSaveDir) )
+
+    trainer = pybrain.supervised.trainers.BackpropTrainer(neuralNet, trainingDataset, verbose=True)
 
     oldError = 0.0
     if numberOfTrainingEpochs > 0:
         for i in range(numberOfTrainingEpochs):
-            logging.warn("\nTraining: starting epoch {0} / {1}".format(
-                i + 1, numberOfTrainingEpochs) )
+            logging.warn("\nTraining: starting epoch {0} / {1} @ {2}".format(
+                i + 1, numberOfTrainingEpochs, datetime.datetime.utcnow()) )
             epochError = trainer.train()
             if oldError < 0.000000001:
-                logging.warn("Training epoch complete, error = {0:1.8f}".format(
-                    epochError) )
+                logging.warn("Training epoch complete, error = {0:1.010f}, time = {1}".format(
+                    epochError, datetime.datetime.utcnow()) )
             else:
-                logging.warn("Training epoch complete, error = {0:1.08f}, error delta = {1:2.08f}".format(
-                    epochError, epochError - oldError) )
+                logging.warn("Training epoch complete, error = {0:1.010f}, error delta = {1:2.010f}, time = {2}".format(
+                    epochError, epochError - oldError, datetime.datetime.utcnow()) )
 
+            # Save off data so far
+            persistNetwork(neuralNet, networkSaveDir)
+
+            # Update error so we can show change
             oldError = epochError
 
     else:
         logging.warn("Training: starting training @ {0}, running to convergence".format(
             datetime.datetime.utcnow()) )
-        trainer.trainUntilConvergence(verbose=True)
+        trainer.trainUntilConvergence(verbose=True, maxEpochs=500)
         logging.warn("Training: network converted @ {0}".format(
             datetime.datetime.utcnow()) )
 
 
-def persistNetwork(neuralNet):
+def persistNetwork(neuralNet, networkSaveDir):
     currentDatetime = datetime.datetime.utcnow()
-    filename = "ElevatorIntelligence-net-{0}.xml".format(
-        currentDatetime.strftime("%Y%m%d%H%M%S") )
+    filename = os.path.join( networkSaveDir, "ElevatorIntelligence-net-{0}.xml".format(
+        currentDatetime.strftime("%Y%m%d%H%M%S")) )
 
     pybrain.tools.customxml.networkwriter.NetworkWriter.writeToFile( neuralNet, 
         filename )
