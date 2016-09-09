@@ -67,8 +67,14 @@ class ElevatorBank:
             # Get list of activities at this time
             for currActivity in activitiesList[currTimestamp]:
 
+                # If empty or doesn't have type key, ignore
+                if isinstance(currActivity, dict) is False or \
+                        len(currActivity.keys()) == 0 or \
+                        'activity_type' not in currActivity:
+                    continue
+
                 # Is it one we care about?
-                if currActivity.getType() == "Request Elevator":
+                if currActivity['activity_type'] == "Request Elevator":
                     # Add to our bank's timeline of events
                     self.addEventToElevatorTimeline(currActivity)
 
@@ -78,7 +84,7 @@ class ElevatorBank:
 
 
     def addEventToElevatorTimeline(self, activity):
-        timestamp = activity.getStartTimeString()
+        timestamp = activity['activity_time']
 
         if timestamp not in self._elevatorActivityTimeline:
             self._elevatorActivityTimeline[timestamp] = []

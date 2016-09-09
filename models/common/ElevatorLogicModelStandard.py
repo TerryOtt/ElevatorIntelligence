@@ -35,7 +35,7 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
                     simulationTimestamp, len(elevatorTimeline[simulationTimestamp])) )
 
                 for currActivity in elevatorTimeline[simulationTimestamp]:
-                    if currActivity.getType() == "Request Elevator":
+                    if currActivity['activity_type'] == "Request Elevator":
                         self._processElevatorRequest(currActivity, elevatorBank)
 
 
@@ -45,7 +45,7 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
     def _processElevatorRequest(self, elevatorActivity, elevatorBank):
 
         self._log.debug("Processing elevator request at {0}".format(
-            elevatorActivity.getStartTimeString()) )
+            elevatorActivity['activity_time']) )
         
         # Create a new person object 
         newPerson = elevatorBank.createNewRiderId()
@@ -54,14 +54,14 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
 
         # Find out which queue to add them to -- note activity floor indexes and elevator floor indexes are
         #       off by one because I wanted to make life way harder than it needs to be
-        startingFloorIndex = elevatorActivity.getStartFloor() - 1
+        startingFloorIndex = elevatorActivity['start_floor'] - 1
         
         # Are they going up or down?
-        travelDirection = elevatorActivity.getButtonPressed()
+        travelDirection = elevatorActivity['button_pressed']
 
         # Add them to appropriate elevator queue
         elevatorBank.addRiderToElevatorQueue(
-            elevatorActivity.getStartTime(), newPerson, startingFloorIndex, 
+            elevatorActivity['activity_time'], newPerson, startingFloorIndex, 
             travelDirection)
 
         # If all elevators are idle, we need to activate the one closest to us
