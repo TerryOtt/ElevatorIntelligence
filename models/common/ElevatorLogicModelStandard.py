@@ -4,6 +4,7 @@ import logging
 import abc
 import models.common.ElevatorLogicModel
 import datetime
+import collections
 
 
 class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicModel):
@@ -15,22 +16,23 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
         # Get the starting timeline (just request elevator events so far)
         elevatorTimeline = elevatorBank.getElevatorTimeline()
 
-        sortedTimestamps = sorted( elevatorTimeline.keys() )
+        sortedTimestamps = collections.deque( sorted(elevatorTimeline.keys()) )
 
-        # Walk time through and handle events as we find them
-        simulationTime = datetime.datetime.strptime( sortedTimestamps[0], "%Y%m%d %H%M%S" )
+        # Time resolution is one second per turn -- NOTE! has to be an even number of seconds
+        timeResolution = datetime.timedelta(seconds=1)
 
-        simulationTimestamp = sortedTimestamps[0]
+        # Start with first event of the list
+        simulationTimestamp = sortedTimestamps.popleft()
+        simulationTime = datetime.datetime.strptime( simulationTimestamp, "%Y%m%d %H%M%S" )
 
-        # Time resolution is 1.0 second per turn
-        timeResolution = 1.0
 
-        while simulationTimestamp < sortedTimestamps[len(sortedTimestamps) - 1 ]:
+        while len(sortedTimestamps) > 0:
+
             # Move elevators
-            elevatorBank.moveActiveElevators(timeResolution)
+            elevatorBank.moveActiveElevators(simulationTime, timeResolution)
 
             # Any activities at this point?
-            if simulationTimestamp in sortedTimestamps:
+            if simulationTimestamp in elevatorTimeline:
                 self._log.debug("{0}, found {1} activities".format(
                     simulationTimestamp, len(elevatorTimeline[simulationTimestamp])) )
 
@@ -38,9 +40,18 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
                     if currActivity['activity_type'] == "Request Elevator":
                         self._processElevatorRequest(currActivity, elevatorBank)
 
+            # If all elevators are idle, warp forward in time
+            if elevatorBank.allElevatorsIdle() is True:
+                simulationTimestamp = sortedTimestamps.popleft()
+                simulationTime = datetime.datetime.strptime( simulationTimestamp, "%Y%m%d %H%M%S" )
 
-            simulationTime += datetime.timedelta(seconds=1)
-            simulationTimestamp = simulationTime.strftime("%Y%m%d %H%M%S")
+                self._log.info("Timewarp forward to {0}".format(simulationTime) )
+
+            # Elevators are active, move one timeslice forward
+            else:
+                simulationTime += timeResolution
+                simulationTimestamp = simulationTime.strftime("%Y%m%d %H%M%S")
+
 
     def _processElevatorRequest(self, elevatorActivity, elevatorBank):
 

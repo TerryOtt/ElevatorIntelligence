@@ -172,15 +172,14 @@ class ElevatorBank:
         else:
             activatingElevator.setTravelDirection(-1)
 
-    def moveActiveElevators(self, timespanInSeconds):
-        self._log.info("Moving active elevators distance they can cover in {0} seconds".format(
-            timespanInSeconds) )
+    def moveActiveElevators(self, simulationTime, simulationTimeslice):
+        timespanInSeconds = simulationTimeslice.seconds
 
         for currElevator in self._elevators:
             if currElevator.isActive() is True:
 
-                self._log.info("{0} is active".format(
-                    currElevator.getName()) )
+                self._log.info("{0}: {1} is active".format(
+                    simulationTime, currElevator.getName()) )
 
                 # Get current floor number
                 currentFloorIndex = currElevator.getFloorIndex()
