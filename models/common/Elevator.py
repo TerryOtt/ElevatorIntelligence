@@ -13,6 +13,8 @@ class Elevator:
         self._elevatorCurrentOccupants = 0
         self._doorOpenCloseTime = doorOpenCloseTime
         self._secondsPerFloor = secondsPerFloor
+        self._loadingEvolutionPhase = None
+        self._loadingEvolutionPhaseTimeRemaining = None
 
 
     def getName(self):
@@ -65,3 +67,69 @@ class Elevator:
         return self.getFloorIndex() + \
             (self.getTravelDirection() * self.getFloorsPerSecond() * timespanInSeconds)
 
+
+    def initiateLoadingEvolution(self):
+        # Mark that next step is wait for doors to open, but they haven't started yet
+        self._loadingEvolutionPhase = "DoorsOpening"
+        self._loadingEvolutionPhaseTimeRemaining = self._doorOpenCloseTime
+
+        self._log.info("{0} has been set to start doors opening on next logic iteration")
+
+
+    def isLoadingEvolutionInProcess(self):
+        return self._loadingEvolutionPhase != None
+
+
+    def continueLoadingEvolution(self, simulationTimeslice, elevatorBank):
+        secondsRemaining = simulationTimeslice.seconds
+
+        while abs(secondsRemaining) > 0.001:
+            timeSpent = min(secondsRemaining, self._loadingEvolutionPhaseTimeRemaining)
+
+            self._loadingEvolutionPhaseTimeRemaining -= timeSpent
+            secondsRemaining -= timeSpent
+
+            self._log.info("{0} performed {1} seconds of loading phase {2}, {3} seconds remain".format(
+                self.getName(), timeSpent, self._loadingEvolutionPhase, self._loadingEvolutionPhaseTimeRemaining) )
+
+            # Did we complete the current phase
+            if abs(self._loadingEvolutionPhaseTimeRemaining) < 0.001:
+                self._log.info("{0} completed loading phase {1}".format(
+                    self.getName(), self._loadingEvolutionPhase) )
+
+                self._transitionToNextLoadingPhase(elevatorBank)
+
+                # TODO: if this was boarding phase, need to update queues and update queue wait stats
+                if self._loadingEvolutionPhase == 'Loading':
+                    pass
+
+                self._transitionToNextLoadingPhase()
+
+    def _transitionToNextLoadingPhase(self, elevatorBank):
+        oldPhase = self._loadingEvolutionPhase
+
+        if self._loadingEvolutionPhase == "DoorsOpening":
+            self._loadingEvolutionPhase = "Unloading"
+
+            # TODO: this needs to be based on number of people getting off on this floor
+            self._loadingEvolutionPhaseTimeRemaining = random.random() * 15.0
+
+        elif self._loadingEvolutionPhase == "Unloading":
+            self._loadingEvolutionPhase = "Loading"
+
+            # TODO: this needs to be based on number of people getting on elevator
+            self._loadingEvolutionPhaseTimeRemaining = random.random() * 15.0
+
+        elif self._loadingEvolutionPhase == "Loading":
+            self._loadingEvolutionPhase = "DoorsClosing"
+
+            # TODO: this needs to be based on number of people boarding
+            self._loadingEvolutionPhaseTimeRemaining = self._doorOpenCloseTime
+
+        elif self._loadingEvolutionPhase == "DoorsClosing":
+            self._loadingEvolutionPhase = None
+            self._loadingEvolutionPhaseTimeRemaining = None
+
+        self._log.info("{0} transitioned from {1} to {2}, {3} seconds remaining".format(
+            self.getName(), oldPhase, self._loadingEvolutionPhase,
+            self._loadingEvolutionPhaseTimeRemaining) )

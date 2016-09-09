@@ -252,10 +252,6 @@ class ElevatorBank:
 
         self._log.info("{0} starting elevator loading evolution on {1}".format(
             elevator.getName(), self._floorNameLookup[elevator.getFloorIndex()]) )
+
+        elevator.initiateLoadingEvolution()
             
-
-        # If the elevator has a direction, only take from queue matching direction
-
-        # If there's no direction, take the queue that was waiting the longest
-
-        pass
