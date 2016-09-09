@@ -43,7 +43,14 @@ class ApartmentBuilding(Building):
 
         logicModel = models.common.ElevatorLogicModelStandard.ElevatorLogicModelStandard()
 
-        eModel.createElevatorBank( "Elevator Bank - Middle", logicModel, [ "Middle Elevator" ], floorList )
+        elevatorList = []
+        elevatorName = "Middle Elevator"
+        elevatorCapacity = 10
+        elevatorDoorOpenCloseTime = 1.0
+        elevatorSecondsPerFloor = 1.25
+        elevatorList.append( (elevatorName, elevatorCapacity, elevatorDoorOpenCloseTime, elevatorSecondsPerFloor) )
+
+        eModel.createElevatorBank( "Elevator Bank - Middle", logicModel, elevatorList, floorList )
 
         return eModel
 

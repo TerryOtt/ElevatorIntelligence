@@ -22,18 +22,30 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
 
         simulationTimestamp = sortedTimestamps[0]
 
+        # Time resolution is 1.0 second per turn
+        timeResolution = 1.0
+
         while simulationTimestamp < sortedTimestamps[len(sortedTimestamps) - 1 ]:
+            # Move elevators
+            elevatorBank.moveActiveElevators(timeResolution)
+
             # Any activities at this point?
             if simulationTimestamp in sortedTimestamps:
-                self._log.info("Found activity at {0}".format(
-                    simulationTimestamp) )
+                self._log.debug("{0}, found {1} activities".format(
+                    simulationTimestamp, len(elevatorTimeline[simulationTimestamp])) )
+
+                for currActivity in elevatorTimeline[simulationTimestamp]:
+                    if currActivity.getType() == "Request Elevator":
+                        self._processElevatorRequest(currActivity, elevatorBank)
+
 
             simulationTime += datetime.timedelta(seconds=1)
             simulationTimestamp = simulationTime.strftime("%Y%m%d %H%M%S")
 
+    def _processElevatorRequest(self, elevatorActivity, elevatorBank):
 
-
-    def _processElevatorRequest(self, elevatorRequest):
+        self._log.debug("Processing elevator request at {0}".format(
+            elevatorActivity.getStartTimeString()) )
         
         # Create a new person object 
         newPerson = elevatorBank.createNewRiderId()
@@ -52,4 +64,13 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
             elevatorActivity.getStartTime(), newPerson, startingFloorIndex, 
             travelDirection)
 
-        # Record button press to record 1+ rider waiting
+        # If all elevators are idle, we need to activate the one closest to us
+        if elevatorBank.allElevatorsIdle() is True:
+            elevatorBank.activateClosestIdleElevator(startingFloorIndex)
+
+
+
+    def _processElevatorMovement(self, elevatorBank, simulationTime):
+        pass        
+
+

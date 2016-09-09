@@ -21,8 +21,9 @@ class ElevatorModel:
 
         # Create the elevators specified
         newElevators = []
-        for elevatorName in elevatorList:
-            newElevators.append(models.common.Elevator.Elevator(elevatorName))
+        for (elevatorName, elevatorCapacity, doorOpenCloseTime, elevatorSecondsPerFloor) in elevatorList:
+            newElevators.append(models.common.Elevator.Elevator(
+                elevatorCapacity, doorOpenCloseTime, elevatorSecondsPerFloor, elevatorName) )
 
         self._elevatorBanks[bankName] = models.common.ElevatorBank.ElevatorBank(
             bankName, bankLogic, newElevators, floorList) 
@@ -54,5 +55,13 @@ if __name__ == "__main__":
 
     logicModel = models.common.ElevatorLogicModelStandard.ElevatorLogicModelStandard()
 
-    eModel.createElevatorBank( "Elevator Bank - Middle", logicModel, [ "Middle Elevator" ], floorList )
+    elevatorList = []
+
+    elevatorName = "Middle Elevator"
+    elevatorCapacity = 10
+    elevatorSecondsPerFloor = 1.25
+    elevatorList.append( (elevatorName, elevatorCapacity, elevatorSecondsPerFloor) )
+
+    eModel.createElevatorBank( "Elevator Bank - Middle", logicModel, 
+        elevatorList, floorList )
 
