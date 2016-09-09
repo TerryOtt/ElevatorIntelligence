@@ -20,7 +20,7 @@ class Elevator:
 
 
     def setFloorIndex(self, newFloorIndex):
-        self._log.debug("Setting floor index for elevator {0} to {1}".format(
+        self._log.debug("Setting floor index for elevator {0} to {1:2.02f}".format(
             self.getName(), newFloorIndex) )
 
         self._floorIndex = newFloorIndex
@@ -55,3 +55,13 @@ class Elevator:
 
     def getFloorsPerSecond(self):
         return 1.0 / self._secondsPerFloor
+
+
+    def projectFloorIndex(self, simulationTimeslice):
+
+        timespanInSeconds = simulationTimeslice.seconds
+
+        # Calculate where elevator will be in next time slice if we let it keep moving
+        return self.getFloorIndex() + \
+            (self.getTravelDirection() * self.getFloorsPerSecond() * timespanInSeconds)
+

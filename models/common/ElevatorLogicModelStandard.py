@@ -5,6 +5,7 @@ import abc
 import models.common.ElevatorLogicModel
 import datetime
 import collections
+import math
 
 
 class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicModel):
@@ -80,8 +81,100 @@ class ElevatorLogicModelStandard(models.common.ElevatorLogicModel.ElevatorLogicM
             elevatorBank.activateClosestIdleElevator(startingFloorIndex)
 
 
+    def shouldStopToServiceRequest(self, elevator, elevatorBank, simulationTimeslice):
 
-    def _processElevatorMovement(self, elevatorBank, simulationTime):
-        pass        
+        timespanInSeconds = simulationTimeslice.seconds
 
+        # Get current floor number
+        currentFloorIndex = elevator.getFloorIndex()
+
+        # Calculate where elevator will be in next time slice if we let it keep moving
+        projectedFloorIndex = elevator.projectFloorIndex(simulationTimeslice)
+
+        self._log.info("{0} will be moving from floor index {1:2.02f} to {2:2.02f} in {3} seconds".format(
+            elevator.getName(), currentFloorIndex, projectedFloorIndex,
+            timespanInSeconds) )
+
+        # Would the elevator cross a floor with a pending request they can service?
+        (crossesFloorIndex, crossesFloorDirection) = self._calculateCrossedFloor(
+            currentFloorIndex, projectedFloorIndex)
+
+        if crossesFloorIndex != None and elevatorBank.ridersQueuedOnFloor(
+                crossesFloorIndex):
+            # Figure out if we need to stop
+            if self._meetsStopCriteria(crossesFloorIndex, crossesFloorDirection, 
+                    elevator, elevatorBank) is True:
+                self._log.info("{0} stopping at floor index {1} due to matching criteria".format(
+                    elevator.getName(), crossesFloorIndex) )
+                return (True, crossesFloorIndex)
+        else:
+            # Definitely don't stop
+            return (False, None)
+
+
+
+    def _meetsStopCriteria(self, candidateFloor, travelDirection, 
+        elevator, elevatorBank):
+
+        # Known true:
+        #
+        #   Request pending on this floor
+        #
+        # Times we will stop to service request at current floor:
+        #
+        #   1. No more requests pending beyond this floor in current direction of travel
+        #   2. There are riders queued at current floor who want to go in the current 
+        #       direction of travel
+
+        meetsStopCriteria = False
+
+        # Handle case 1
+        if elevatorBank.pendingStopsFurtherAlongTravelDirection( candidateFloor, 
+                travelDirection) is False:
+
+            self._log.info("Potential stop at floor {0} meets 'no further stops in {1} dir'".format(
+                candidateFloor, travelDirection) )
+
+            # Mark that elevator isn't moving anymore
+            elevator.setTravelDirection(0)
+
+            meetsStopCriteria = True
+
+        # Handle case 2
+        elif elevatorBank.requestsOnThisFloorGoingCurrentDirection( candidateFloor,
+                travelDirection) is True:
+
+            self._log.info("Potential stop at floor {0} meets 'people queued going {1}' criteria".format(
+                candidateFloor, travelDirection) )
+
+            meetsStopCriteria = True
+
+        return meetsStopCriteria
+            
+
+
+
+    def _calculateCrossedFloor(self, currentFloorIndex, projectedFloorIndex):
+
+        # Would the elevator cross a floor with a pending request they can service?
+        integerCurrentIndex = math.trunc(currentFloorIndex)
+        integerProjectedIndex = math.trunc(projectedFloorIndex)
+        crossesFloorIndex = None
+        crossesFloorDirection = None
+
+        # ***NOTE*** this logic assumes you can only cross ONE FLOOR PER TIMESLICE
+        #       If there's ever an elevator that can move more than one floor per
+        #       timeslice, need to adjust logic accordingly
+
+        # Do we cross a floor going up?
+        if integerProjectedIndex   > integerCurrentIndex:
+            crossesFloorIndex = integerProjectedIndex
+            crossesFloorDirection = "UP"
+
+        # Do we cross it going down?
+        elif integerProjectedIndex < integerCurrentIndex:
+            crossesFloorIndex = integerCurrentIndex
+            crossesFloorDirection = "DOWN"
+
+        return (crossesFloorIndex, crossesFloorDirection)
 

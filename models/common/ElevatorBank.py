@@ -41,7 +41,7 @@ class ElevatorBank:
         self._log.info("Elevators:")
         for currElevator in self._elevators:
             # Set random floors for the elevators in the bank
-            currElevator.setFloorIndex( random.randint(0, len(self._floorNameLookup)) )
+            currElevator.setFloorIndex( random.randint(0, len(self._floorNameLookup) - 1) )
 
             self._log.info("\tElevator {0} initialized at floor {1}".format(
                 currElevator.getName(), self._floorNameLookup[currElevator.getFloorIndex()]) )
@@ -147,7 +147,7 @@ class ElevatorBank:
 
 
     def activateClosestIdleElevator(self, requestFloorIndex):
-        self._log.info("Have a request on floor {0}, activating closest idle".format(
+        self._log.info("Have a request on floor {0}, finding best idle elevator to serve".format(
             self._floorNameLookup[requestFloorIndex]) )
 
         closestElevatorIndex = len(self._elevators)
@@ -163,14 +163,23 @@ class ElevatorBank:
 
         # What's our winner?
         activatingElevator = self._elevators[closestElevatorIndex]
-        self._log.info("Activating elevator {0}, currently on {1}, to service request on {2}".format(
-            activatingElevator.getName(), self._floorNameLookup[activatingElevator.getFloorIndex()],
-            self._floorNameLookup[requestFloorIndex]) )
 
-        if activatingElevator.floorDelta(requestFloorIndex) > 0:
-            activatingElevator.setTravelDirection(1)
+        # May already be on target floor
+        if smallestFloorDelta == 0:
+            self._log.info("Dumb luck, elevator {0} was already idle at that floor")
+
+            self.initiateElevatorLoadingEvolution(activatingElevator)
+
         else:
-            activatingElevator.setTravelDirection(-1)
+            self._log.info("Activating elevator {0}, currently on {1}, to service request on {2}".format(
+                activatingElevator.getName(), self._floorNameLookup[activatingElevator.getFloorIndex()],
+                self._floorNameLookup[requestFloorIndex]) )
+
+            if activatingElevator.floorDelta(requestFloorIndex) > 0:
+                activatingElevator.setTravelDirection(1)
+            else:
+                activatingElevator.setTravelDirection(-1)
+
 
     def moveActiveElevators(self, simulationTime, simulationTimeslice):
         timespanInSeconds = simulationTimeslice.seconds
@@ -181,42 +190,72 @@ class ElevatorBank:
                 self._log.info("{0}: {1} is active".format(
                     simulationTime, currElevator.getName()) )
 
-                # Get current floor number
-                currentFloorIndex = currElevator.getFloorIndex()
+                # Determine if we need to make a stop
+                (shouldStop, whereStop) =  self._bankLogic.shouldStopToServiceRequest(currElevator,
+                    self, simulationTimeslice)
 
-                # Calculate where elevator will be in next time slice if we let it keep moving
-                projectedFloorIndex = currentFloorIndex + \
-                    (currElevator.getTravelDirection() * \
-                    currElevator.getFloorsPerSecond() * timespanInSeconds)
+                if shouldStop is True:
+                    self._log.info("{0} told to stop at {1} to service request".format(
+                        currElevator.getName(), self._floorNameLookup[whereStop]) )
 
-                self._log.info("{0} will be moving from floor index {1:2.02f} to {2:2.02f} in {3} seconds".format(
-                    currElevator.getName(), currentFloorIndex, projectedFloorIndex, 
-                    timespanInSeconds) )
+                    currElevator.setFloorIndex(whereStop)
 
-                # Would the elevator cross a floor with a pending request they can service?
-                integerCurrentIndex = math.trunc(currentFloorIndex)
-                integerProjectedIndex = math.trunc(projectedFloorIndex)
-                checkFloorQueue = None
-                if integerProjectedIndex > integerCurrentIndex:
-                    queueCheckName = 'elevatorQueueUp'
-                    checkFloorQueue = integerProjectedIndex
-                elif integerProjectedIndex < integerCurrentIndex:
-                    queueCheckName = 'elevatorQueueDown'
-                    checkFloorQueue = integerCurrentIndex
-
-                if checkFloorQueue != None:
-                    self._log.info("{0} crosses floor {1}, checking queue {2}".format(
-                        currElevator.getName(), checkFloorQueue, queueCheckName) )
-
-                    if ( len(self._floors[self._floorNameLookup[checkFloorQueue]][queueCheckName]) > 0 ):
-                        self._log.info("{0} stopping at floor {1} to service request!".format(
-                            currElevator.getName(), checkFloorQueue) )
-                        currElevator.setFloorIndex(checkFloorQueue)
-                        currElevator.setTravelDirection(0)
-                    else:
-                        # Keep moving!
-                        currElevator.setFloorIndex(projectedFloorIndex)
-
+                    self.initiateElevatorLoadingEvolution(currElevator)
+                     
+                    
                 else:
-                    # Keep moving!
-                    currElevator.setFloorIndex(projectedFloorIndex)
+                    currElevator.setFloorIndex(
+                        currElevator.projectFloorIndex(simulationTimeslice))
+                    self._log.info("{0}: {1} moved to floor index {2:2.02f}".format(
+                        simulationTime, currElevator.getName(), 
+                        currElevator.getFloorIndex()) )
+
+
+    def ridersQueuedOnFloor(self, floorIndex):
+        return \
+            len(self._floors[self._floorNameLookup[floorIndex]]['elevatorQueueUp']) > 0 or \
+            len(self._floors[self._floorNameLookup[floorIndex]]['elevatorQueueDown']) > 0
+
+
+    def pendingStopsFurtherAlongTravelDirection( self, currentFloor, 
+            currentTravelDirection ):
+
+        if currentTravelDirection == "UP":
+            searchStartIndex = currentFloor + 1
+            searchEndIndex = len(self._floors) 
+        else:
+            searchStartIndex = 0
+            searchEndIndex = currentFloor 
+
+        pendingStops = False
+
+        for searchIndex in range( searchStartIndex, searchEndIndex ):
+            if self.ridersQueuedOnFloor(searchIndex) is True:
+                pendingsStops = True
+                break
+
+        return pendingStops
+
+
+    def requestsOnThisFloorGoingCurrentDirection( self, currentFloor, 
+            currentTravelDirection ):
+
+        if currentTravelDirection == "UP":
+            searchQueue = "ElevatorQueueUp"
+        else:
+            searchQueue = "ElevatorQueueDown"
+
+        return len(self._floors[self._floorNameLookup[floorIndex]][searchQueue]) > 0
+
+
+    def initiateElevatorLoadingEvolution(self, elevator):
+
+        self._log.info("{0} starting elevator loading evolution on {1}".format(
+            elevator.getName(), self._floorNameLookup[elevator.getFloorIndex()]) )
+            
+
+        # If the elevator has a direction, only take from queue matching direction
+
+        # If there's no direction, take the queue that was waiting the longest
+
+        pass

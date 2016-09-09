@@ -16,3 +16,7 @@ class ElevatorLogicModel:
     @abc.abstractmethod
     def addActivity(self, elevatorActivity, elevatorBank):
         return
+
+    @abc.abstractmethod
+    def shouldStopOnFloor(self, elevator):
+        return
