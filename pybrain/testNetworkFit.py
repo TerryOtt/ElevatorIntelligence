@@ -1,12 +1,12 @@
 #!/usr/bin/python3
 
 import json
-import pybrain.tools.shortcuts
 import pybrain.tools.customxml.networkreader
 import logging
 import argparse
 import datetime
 import pprint
+import statistics
 
 
 def main():
@@ -15,7 +15,9 @@ def main():
     activities = readActivities(args.activities_file)
     neuralNet = createNetworkFromFile(args.neuralnet_xml)
 
-    testFit(activities, neuralNet)
+    stats = testFit(activities, neuralNet)
+
+    printStats(stats)
 
 
 def parseArgs():
@@ -38,8 +40,7 @@ def readActivities(activityFile):
 
 def createNetworkFromFile(neuralNetXmlFile):
 
-    neuralNet = pybrain.tools.shortcuts.buildNetwork(7, 4, 1, bias=True)
-    pybrain.tools.customxml.networkreader.NetworkReader.readFrom(neuralNetXmlFile)
+    neuralNet = pybrain.tools.customxml.networkreader.NetworkReader.readFrom(neuralNetXmlFile)
 
     print("Read neural net from {0}".format(neuralNetXmlFile) )
 
@@ -50,30 +51,41 @@ def testFit(activities, neuralNet):
     timestamps = sorted( activities.keys() )
 
     stats = {
-        'datapoints': 0,
+        'numDatapoints': 0,
         'totalError': 0.0
     }
+
+    stats['errorList'] = []
 
     for currTimestamp in timestamps:
         entryTimestamp = datetime.datetime.strptime(currTimestamp, "%Y%m%d %H%M%S")
         # print( "Entry timestamp: {0}".format(entryTimestamp) )
 
         for currActivity in activities[currTimestamp]:
+            if currActivity == None or 'activity_type' not in currActivity:
+                continue
+
             # Is it a button press?
             if currActivity['activity_type'] == "Request Elevator":
-                print( "Button press at {0} on floor index {1}".format(
-                    entryTimestamp, currActivity['start_floor']) )
+                # print( "Button press at {0} on floor index {1}".format(
+                #     entryTimestamp, currActivity['start_floor']) )
 
-                neuralNetResult = activateNet(neuralNet, entryTimestamp)
+                neuralNetResult = denormalizeOutput( 
+                    activateNet(neuralNet, entryTimestamp) )
 
-                print( "Neural net result: {0:5.3f}".format(
-                   neuralNetResult) )
+                # print( "\tNeural net result: {0:5.3f}".format(
+                #    neuralNetResult) )
 
-                break
+                errorDelta = abs(neuralNetResult - currActivity['start_floor'])
 
-            break
+                # print( "\tError delta: {0:5.3f}".format(errorDelta) )
 
-        break
+                stats['numDatapoints'] += 1
+                stats['errorList'].append(errorDelta)
+                stats['totalError'] += errorDelta
+
+    return stats
+
 
 
 def activateNet(neuralNet, entryTimestamp):
@@ -133,6 +145,33 @@ def normalizeMinute(minute):
 
 def normalizeSecond(second):
     return second / 59.0
+
+
+def denormalizeOutput(normalizedOutput):
+    return (normalizedOutput * 8.0) + 1.0
+
+
+def printStats(stats):
+
+    numDatapoints   = stats['numDatapoints']
+    totalError      = stats['totalError']
+    minError        = min(stats['errorList'])
+    meanError       = statistics.mean( stats['errorList'] )
+    medianError     = statistics.median( stats['errorList'] ) 
+    maxError        = max(stats['errorList'])
+
+    # Measures of spread
+    populationStdDev        = statistics.pstdev(stats['errorList'])
+    #populationVariance      = statistics.pvariance(stats['errorList'])
+
+    print( "Data points: {0:6d}\n".format(numDatapoints) )
+    print( "Error:")
+    print( "\t    Min: {0:6.3f}".format(minError) )
+    print( "\t   Mean: {0:6.3f}".format(meanError) )
+    print( "\t Median: {0:6.3f}".format(medianError) )
+    print( "\t    Max: {0:6.3f}".format(maxError) )
+    print( "\tStd dev: {0:6.3f}".format(populationStdDev) )
+    #print( "\tVariance: {0:10.7f}".format(populationVariance) )
 
 
 
