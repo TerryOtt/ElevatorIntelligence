@@ -105,13 +105,13 @@ def createDataset(jsonDir):
                         # Input (timestamp of button press)
                         (
                             # Year (normalized from 0.0 = 1970 to 1.0 = 2069)
-                            (currDateTime.year - 1970) / 100.0, 
+                            (currDateTime.year - 1970) / 99.0
 
                             # Month (normalized from 0.0 = Jan to 1.0 = Dec
-                            (currDateTime.month - 1) / 1.0,
+                            (currDateTime.month - 1) / 11.0,
 
                             # Day (normalized from 0.0 = 1 to 1.0 = 31)
-                            (currDateTime.day - 1) / 31.0,
+                            (currDateTime.day - 1) / 30.0,
 
                             # Day of month (normalized from 0.0 = Monday to 1.0 = Sunday)
                             currDateTime.date().weekday() / 6.0,
