@@ -109,3 +109,6 @@ runStdSim
 
 # JSON file
 *.json
+
+# Testing files
+test/
