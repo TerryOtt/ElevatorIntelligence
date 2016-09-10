@@ -106,3 +106,6 @@ pybrain/library/
 
 # Drivers directory
 drivers/
+
+# Json file
+*.json
