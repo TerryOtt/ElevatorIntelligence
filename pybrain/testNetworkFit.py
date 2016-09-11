@@ -7,9 +7,11 @@ import argparse
 import datetime
 import pprint
 import statistics
+import random
 
 
 def main():
+    random.seed()
     args = parseArgs()
 
     activities = readActivities(args.activities_file)
@@ -71,7 +73,9 @@ def testFit(activities, neuralNet):
                 #     entryTimestamp, currActivity['start_floor']) )
 
                 neuralNetResult = denormalizeOutput( 
-                    activateNet(neuralNet, entryTimestamp) )
+                   activateNet(neuralNet, entryTimestamp) )
+                #neuralNetResult = denormalizeOutput(
+                #    random.random() )
 
                 # print( "\tNeural net result: {0:5.3f}".format(
                 #    neuralNetResult) )
@@ -120,15 +124,15 @@ def convertDatetimeToNormalizedInputVector(entryTimestamp):
 
 
 def normalizeYear(year):
-    return (year - 1970) / 100.0
+    return (year - 1970) / 99.0
 
 
 def normalizeMonth(month):
-    return (month - 1) / 1.0
+    return (month - 1) / 11.0
 
 
 def normalizeDay(day):
-    return (day - 1) / 31.0
+    return (day - 1) / 30.0
 
 
 def normalizeWeekday(weekday):
