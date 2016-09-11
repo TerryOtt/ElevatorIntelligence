@@ -314,7 +314,7 @@ def encodeDayOfWeek(dayOfWeek):
         # Saturday is bit 6.        6-6 = 0
         dayOfWeekEncoding[ 6 - dayOfWeek ] = 1
     else:
-        for i in range(7):
+        for i in range(6):
             dayOfWeekEncoding[i] = -1
 
     return dayOfWeekEncoding
