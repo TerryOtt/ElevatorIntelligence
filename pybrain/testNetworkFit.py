@@ -8,6 +8,7 @@ import datetime
 import pprint
 import statistics
 import random
+import csv
 
 
 def main():
@@ -16,8 +17,7 @@ def main():
 
     activities = readActivities(args.activities_file)
     neuralNet = createNetworkFromFile(args.neuralnet_xml)
-
-    stats = testFit(activities, neuralNet)
+    stats = testFit(activities, neuralNet, args.output_csv)
 
     printStats(stats)
 
@@ -26,6 +26,7 @@ def parseArgs():
     parser = argparse.ArgumentParser(description="Elevator simulation driver for high rise apts w/ std logic")
     parser.add_argument('activities_file', help="Input JSON file with activities")
     parser.add_argument('neuralnet_xml', help='Input XML file with PyBrain XML neural net definition')
+    parser.add_argument('output_csv', help='Output CSV to run through Excel to get box-whisker chart')
 
     return parser.parse_args()
 
@@ -49,7 +50,7 @@ def createNetworkFromFile(neuralNetXmlFile):
     return neuralNet
 
 
-def testFit(activities, neuralNet):
+def testFit(activities, neuralNet, csvFilename):
     timestamps = sorted( activities.keys() )
 
     stats = {
@@ -58,27 +59,38 @@ def testFit(activities, neuralNet):
     }
 
     stats['errorList'] = []
+  
+    with open(csvFilename, 'w', newline='') as outputCsv:
+        csvWriter = csv.writer(outputCsv)
+        csvWriter.writerow( [ "hour", "expected_output", "neural_net_output" ] )
 
-    for currTimestamp in timestamps:
-        entryTimestamp = datetime.datetime.strptime(currTimestamp, "%Y%m%d %H%M%S")
-        # print( "Entry timestamp: {0}".format(entryTimestamp) )
+        for currTimestamp in timestamps:
+            entryTimestamp = datetime.datetime.strptime(currTimestamp, "%Y%m%d %H%M%S")
+            # print( "Entry timestamp: {0}".format(entryTimestamp) )
 
-        for currActivity in activities[currTimestamp]:
-            if currActivity == None or 'activity_type' not in currActivity:
-                continue
+            for currActivity in activities[currTimestamp]:
+                if currActivity == None or 'activity_type' not in currActivity:
+                    continue
 
-            # Is it a button press?
-            if currActivity['activity_type'] == "Request Elevator":
-                # print( "Button press at {0} on floor index {1}".format(
-                #     entryTimestamp, currActivity['start_floor']) )
+                # Is it a button press?
+                if currActivity['activity_type'] == "Request Elevator":
+                    # print( "Button press at {0} on floor index {1}".format(
+                    #     entryTimestamp, currActivity['start_floor']) )
 
-                neuralNetResult = denormalizeOutput( 
-                   activateNet(neuralNet, entryTimestamp) )
-                #neuralNetResult = denormalizeOutput(
-                #    random.random() )
+                    neuralNetResult = activateNet(neuralNet, currTimestamp )
+                    #neuralNetResult = (random.random() * 8) + 1
 
-                # print( "\tNeural net result: {0:5.3f}".format(
-                #    neuralNetResult) )
+                    # print( "\tNeural net result: {0:5.3f}".format(
+                    # neuralNetResult) )
+
+                    # Write the data out to the CSV
+                    csvWriter.writerow(
+                        [ 
+                            "Hour {0:02d}00".format(entryTimestamp.hour),
+                            currActivity['start_floor'],
+                            neuralNetResult
+                        ]
+                    )                
 
                 errorDelta = abs(neuralNetResult - currActivity['start_floor'])
 
@@ -100,59 +112,101 @@ def activateNet(neuralNet, entryTimestamp):
     return neuralNet.activate( inputVector )[0]
 
 
+def getOriginalInputValuesFromTimestamp(timestampString):
+
+    timestamp = datetime.datetime.strptime( timestampString, "%Y%m%d %H%M%S" )
+
+    year = timestamp.year
+    dayOfYear = timestamp.timetuple()[7]
+    secondOfDay = \
+        (timestamp.hour * 3600) + \
+        (timestamp.minute * 60) + \
+        timestamp.second
+    dayOfWeek = timestamp.isoweekday()
+
+    return (year, dayOfYear, secondOfDay, dayOfWeek)
+
 
 def convertDatetimeToNormalizedInputVector(entryTimestamp):
 
-    # There are seven values in the input vector
+    # There are nine values in the input vector
     #
-    #   Year        (normalized from 1970-2069)
-    #   Month       (normalized from 1-12)
-    #   Day         (normalized from 1-31)
-    #   Day of week (normalized from 1-7)
-    #   Hour        (normalized from 0-23)
-    #   Minute      (normalized from 0-59)
-    #   Second      (normalized from 0-59)
-    return [
-        normalizeYear(entryTimestamp.year),
-        normalizeMonth(entryTimestamp.month),
-        normalizeDay(entryTimestamp.day),
-        normalizeWeekday(entryTimestamp.date().weekday()),
-        normalizeHour(entryTimestamp.hour),
-        normalizeMinute(entryTimestamp.minute),
-        normalizeSecond(entryTimestamp.second)
+    #   Year          (gaussian normalized)
+    #   Day of year   (gaussian normalized)
+    #   Second of day (gaussian normalized)
+    #   Six-bit dummy vector for day of week
+    #       (  0  0  0  0  0  1 ) = Monday
+    #       (  1  0  0  0  0  0 ) = Saturday
+    #       ( -1 -1 -1 -1 -1 -1 ) = Sunday
+
+    (year, dayOfYear, secondOfDay, dayOfWeek) = getOriginalInputValuesFromTimestamp(
+        entryTimestamp )
+
+    returnSequence = [
+        gaussianNormalizeNumericInput( 'year', year ),
+        gaussianNormalizeNumericInput( 'dayOfYear', dayOfYear ),
+        gaussianNormalizeNumericInput( 'secondOfDay', secondOfDay ),
     ]
 
+    returnSequence.extend(encodeDayOfWeek(dayOfWeek))
 
-def normalizeYear(year):
-    return (year - 1970) / 99.0
-
-
-def normalizeMonth(month):
-    return (month - 1) / 11.0
+    return returnSequence
 
 
-def normalizeDay(day):
-    return (day - 1) / 30.0
+def gaussianNormalizeNumericInput( inputType, inputValue ):
+
+    # Pulled from training activities data, 10 year run starting 2016-12-15
+    stats = {
+        'year': {
+            'mean':      2021.45870,
+            'stdev':        2.87825
+        },
+
+        'dayOfYear': {
+            'mean':       182.80361,
+            'stdev':      105.36360
+        },
+
+        'secondOfDay': {
+            'mean':     46422.07271,
+            'stdev':    20938.44370
+        }
+    }
+
+    if inputType not in stats:
+        raise ValueError("Unknown numeric stat type {0}".format(
+            inputType) )
+
+    relevantStats = stats[inputType]
+
+    return ( (inputValue - relevantStats['mean']) / 
+        relevantStats['stdev'] )
 
 
-def normalizeWeekday(weekday):
-    return weekday / 6.0
+def encodeDayOfWeek(dayOfWeek):
+    dayOfWeekEncoding = [ 0, 0, 0, 0, 0, 0 ]
+
+    # Using 6-bit "one-of-(C-1) effect-coding" for day of week
+    #
+    #   ( 0  0  0  0  0  1) = Monday
+    #   ( 0  0  0  0  1  0) = Tuesday
+    #   ( 0  0  0  1  0  0) = Wednesday
+    #   ( 0  0  1  0  0  0) = Thursday
+    #   ( 0  1  0  0  0  0) = Friday
+    #   ( 1  0  0  0  0  0) = Saturday
+    #   (-1 -1 -1 -1 -1 -1) = Sunday
 
 
-def normalizeHour(hour):
-    return hour / 23.0
+    # Using ISO day of week, so Monday = 1, Sunday = 7)
+    if dayOfWeek < 7:
+        # Monday needs to be bit 5. 6-1 = 5
+        # Saturday is bit 6.        6-6 = 0
+        dayOfWeekEncoding[ 6 - dayOfWeek ] = 1
+    else:
+        for i in range(6):
+            dayOfWeekEncoding[i] = -1
 
-
-def normalizeMinute(minute):
-    return minute / 59.0
-
-
-def normalizeSecond(second):
-    return second / 59.0
-
-
-def denormalizeOutput(normalizedOutput):
-    return (normalizedOutput * 8.0) + 1.0
+    return dayOfWeekEncoding
 
 
 def printStats(stats):
