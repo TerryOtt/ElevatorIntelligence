@@ -102,3 +102,8 @@ runHighRise
 
 # Ignore pybrain source
 pybrain/library/
+pybrain/pybrain/
+pybrain/test/
+
+# Drivers
+drivers/

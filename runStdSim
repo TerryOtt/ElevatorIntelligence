@@ -1,0 +1,3 @@
+#!/bin/bash
+
+python3 -m drivers.SimulateStandard $1 stats.json
