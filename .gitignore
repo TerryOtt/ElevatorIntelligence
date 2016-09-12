@@ -102,6 +102,7 @@ runHighRise
 
 # Ignore pybrain source
 pybrain/library/
+pybrain/pybrain/
 
 # drivers
 drivers/
@@ -112,3 +113,6 @@ runStdSim
 
 # Testing files
 test/
+
+# CSV data files
+*.csv
